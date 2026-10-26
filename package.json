@@ -10,6 +10,9 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev:api": "npm run dev -w @stockpilot/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
