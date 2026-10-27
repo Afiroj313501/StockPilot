@@ -31,3 +31,6 @@ test-results/
 *.sql
 *.dump
 uploads/
+
+# Keep Prisma migrations
+!apps/api/prisma/migrations/**/*.sql
