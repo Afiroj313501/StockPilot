@@ -14,3 +14,14 @@
 | Brute-force login               | Rate limiting                                | Lockout/429 test (3)                     |
 
 Reporting procedure and known limitations are added in Phase 13.
+
+## Authentication (implemented in Phase 3, chunk 4)
+
+- Server-side sessions: random 256-bit token in an httpOnly, SameSite=Lax cookie
+  (Secure in production). Only the SHA-256 hash is stored. Sessions expire after 7 days.
+- Passwords hashed with bcrypt (cost 12). Login timing does not reveal whether an email exists.
+- CSRF: SameSite=Lax plus Origin / Sec-Fetch-Site check on state-changing requests.
+- Rate limit: 10 register/login attempts per 15 minutes per IP (in-memory; per server instance).
+- Known gaps (planned): audit logging of auth events (Phase 12), password reset and
+  email verification (not in the initial release), and `trust proxy` setup behind a
+  reverse proxy (Phase 14).

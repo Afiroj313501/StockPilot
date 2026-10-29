@@ -23,6 +23,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   memberships StoreMembership[]
+  sessions    Session[]
 
   @@map("users")
 }
@@ -52,4 +53,17 @@ model StoreMembership {
   @@unique([userId, storeId])
   @@index([storeId])
   @@map("store_memberships")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
