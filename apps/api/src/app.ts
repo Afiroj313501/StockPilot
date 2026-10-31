@@ -9,6 +9,8 @@ import { createAuthLimiter } from './middleware/rateLimit';
 import { requestId } from './middleware/requestId';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import { healthRouter } from './modules/health/health.routes';
+import { storesRouter } from './modules/stores/stores.routes';
+import { usersRouter } from './modules/users/users.routes';
 
 export interface AppOptions {
   authRateLimitMax?: number;
@@ -28,6 +30,8 @@ export function createApp(options: AppOptions = {}) {
   const authLimiter = createAuthLimiter(options.authRateLimitMax ?? 10);
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(authLimiter));
+  app.use('/api/v1/stores', storesRouter);
+  app.use('/api/v1/users', usersRouter);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -6,7 +6,7 @@ import { prisma } from '../../db/prisma';
 import { AppError } from '../../utils/httpError';
 import type { LoginInput, RegisterInput } from './auth.schemas';
 
-const BCRYPT_COST = env.NODE_ENV === 'test' ? 4 : 12;
+export const BCRYPT_COST = env.NODE_ENV === 'test' ? 4 : 12;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-timing', BCRYPT_COST);
 

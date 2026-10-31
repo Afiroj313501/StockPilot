@@ -25,3 +25,17 @@ Reporting procedure and known limitations are added in Phase 13.
 - Known gaps (planned): audit logging of auth events (Phase 12), password reset and
   email verification (not in the initial release), and `trust proxy` setup behind a
   reverse proxy (Phase 14).
+
+## Authorization and tenant isolation (chunk 5)
+
+- Active store comes from the optional `X-Store-Id` header, resolved only against the
+  caller's own memberships. A missing or foreign store ID returns the same 403.
+- Roles are ranked CASHIER < MANAGER < OWNER and enforced by `requireRole` on the server.
+- Queries on store-owned data must always include the `storeId` from the verified store
+  context, never an ID taken from the request. A lookup scoped to the store turns another
+  store's record into not found.
+- User management is owner-only. Owners cannot change their own role or another owner's
+  role, and OWNER cannot be assigned through the API.
+- Known limitations: an email belongs to one account (no multi-store membership yet);
+  no user deactivation endpoint yet; role and user changes are not audit-logged until
+  Phase 12.
