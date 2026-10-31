@@ -11,6 +11,8 @@
   },
   "scripts": {
     "dev:api": "npm run dev -w @stockpilot/api",
+    "dev:web": "npm run dev -w @stockpilot/web",
+    "build:web": "npm run build -w @stockpilot/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "db:up": "docker compose up -d db",

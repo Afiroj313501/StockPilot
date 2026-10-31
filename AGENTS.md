@@ -40,7 +40,12 @@ The core app must work with no AI key.
 
 Small phases. After each: run lint, typecheck, tests; fix failures; update docs.
 
-## Commands (updated as they come online)
+## Commands
 
 - npm install
+- npm run db:up - start PostgreSQL (Docker)
+- npm run dev:api - API on :4000
+- npm run dev:web - web on :5173 (proxies /api to the API)
+- npm run typecheck - all workspaces
+- npm test - API tests (need TEST_DATABASE_URL)
 - npm run format:check
