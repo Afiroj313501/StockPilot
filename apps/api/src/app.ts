@@ -12,6 +12,8 @@ import { healthRouter } from './modules/health/health.routes';
 import { storesRouter } from './modules/stores/stores.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { settingsRouter } from './modules/settings/settings.routes';
+import { categoriesRouter } from './modules/categories/categories.routes';
+import { productsRouter } from './modules/products/products.routes';
 
 export interface AppOptions {
   authRateLimitMax?: number;
@@ -34,6 +36,8 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/stores', storesRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/settings', settingsRouter);
+  app.use('/api/v1/categories', categoriesRouter);
+  app.use('/api/v1/products', productsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

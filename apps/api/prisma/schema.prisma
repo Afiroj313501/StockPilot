@@ -36,6 +36,8 @@ model Store {
 
   memberships StoreMembership[]
   setting      StoreSetting?
+  categories   Category[]
+  products     Product[]
 
   @@map("stores")
 }
@@ -92,4 +94,45 @@ model StoreSetting {
   store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
 
   @@map("store_settings")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  storeId   String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  products Product[]
+
+  @@unique([storeId, name])
+  @@map("categories")
+}
+
+model Product {
+  id               String   @id @default(uuid())
+  storeId          String
+  categoryId       String?
+  name             String
+  sku              String
+  barcode          String?
+  description      String?
+  unit             String?
+  costPrice        Decimal  @db.Decimal(12, 2)
+  sellingPrice     Decimal  @db.Decimal(12, 2)
+  stockQuantity    Int      @default(0)
+  reorderThreshold Int?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([storeId, sku])
+  @@unique([storeId, barcode])
+  @@index([storeId, name])
+  @@index([storeId, categoryId])
+  @@map("products")
 }

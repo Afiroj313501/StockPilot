@@ -39,3 +39,12 @@ Reporting procedure and known limitations are added in Phase 13.
 - Known limitations: an email belongs to one account (no multi-store membership yet);
   no user deactivation endpoint yet; role and user changes are not audit-logged until
   Phase 12.
+
+## Catalog authorization (chunk 8)
+
+- Every product and category query includes the `storeId` from the verified store
+  context. Updates and deletes scope both ID and store, so another store's record
+  is not found.
+- Category IDs in requests are checked against the caller's store before use.
+- Request bodies are strict; `storeId`, `stockQuantity`, and unknown keys are rejected.
+- Sorting by cost is not offered, so cashiers cannot infer cost order.
