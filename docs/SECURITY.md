@@ -48,3 +48,13 @@ Reporting procedure and known limitations are added in Phase 13.
 - Category IDs in requests are checked against the caller's store before use.
 - Request bodies are strict; `storeId`, `stockQuantity`, and unknown keys are rejected.
 - Sorting by cost is not offered, so cashiers cannot infer cost order.
+
+## Inventory ledger (chunk 9)
+
+- All inventory endpoints require MANAGER or OWNER and a verified store context.
+- Product lookups are scoped by `storeId`; another store's product ID returns 404.
+- Request bodies are strict: `storeId`, `quantityBefore`, and `actorUserId` are
+  rejected.
+- Row locking and idempotency keys prevent overselling and double-applied retries.
+- A database trigger does not yet block direct SQL edits to `stock_movements`;
+  `GET /inventory/integrity` detects drift between the ledger and product quantities.

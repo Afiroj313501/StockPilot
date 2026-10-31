@@ -13,6 +13,17 @@ enum Role {
   CASHIER
 }
 
+enum MovementType {
+  OPENING
+  RECEIPT
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGED
+  LOST
+  RECONCILIATION
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique // always stored lowercase (enforced in Phase 3)
@@ -24,6 +35,7 @@ model User {
 
   memberships StoreMembership[]
   sessions    Session[]
+  stockMovements StockMovement[]
 
   @@map("users")
 }
@@ -38,6 +50,7 @@ model Store {
   setting      StoreSetting?
   categories   Category[]
   products     Product[]
+  stockMovements StockMovement[]
 
   @@map("stores")
 }
@@ -129,10 +142,36 @@ model Product {
 
   store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  movements StockMovement[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
   @@index([storeId, name])
   @@index([storeId, categoryId])
   @@map("products")
+}
+
+model StockMovement {
+  id             String       @id @default(uuid())
+  storeId        String
+  productId      String
+  type           MovementType
+  quantityChange Int
+  quantityBefore Int
+  quantityAfter  Int
+  reason         String?
+  referenceType  String?
+  referenceId    String?
+  actorUserId    String
+  idempotencyKey String
+  createdAt      DateTime     @default(now())
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  actor   User    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([storeId, idempotencyKey])
+  @@index([storeId, productId, createdAt])
+  @@index([storeId, createdAt])
+  @@map("stock_movements")
 }
