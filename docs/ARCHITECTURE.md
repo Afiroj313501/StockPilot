@@ -45,3 +45,16 @@
 - Manager and owner endpoints provide movement history, low-stock products, and
   ledger integrity checks. Movements cannot be updated or deleted; corrections are
   new movements.
+
+## Web: catalog and inventory screens (chunk 10)
+
+- `/products` is available to all roles and is read-only for cashiers. Product
+  forms, `/categories`, and `/inventory` are manager-and-owner surfaces.
+  Route guards are convenience only; the API enforces roles.
+- Server state lives in TanStack Query (`['products', ...]`, `['categories']`,
+  and `['inventory', ...]`). Stock changes invalidate products and inventory.
+- Stock is never edited in the product form. Adjust stock posts to
+  `/inventory/movements` with an idempotency key reused only for identical
+  retries.
+- Dialogs use the native `<dialog>` element for browser focus trapping and Esc
+  handling.

@@ -84,7 +84,7 @@ export function AppShell() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-6xl">
           <Outlet />
         </div>
       </main>

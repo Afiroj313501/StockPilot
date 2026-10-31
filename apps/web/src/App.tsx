@@ -6,6 +6,10 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ProductsPage } from './pages/ProductsPage';
+import { ProductFormPage } from './pages/ProductFormPage';
+import { CategoriesPage } from './pages/CategoriesPage';
+import { InventoryPage } from './pages/InventoryPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -20,6 +24,13 @@ export function App() {
         <Route element={<RequireOnboarding />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route element={<RequireRole minRole="MANAGER" />}>
+              <Route path="/products/new" element={<ProductFormPage />} />
+              <Route path="/products/:id/edit" element={<ProductFormPage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+            </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
