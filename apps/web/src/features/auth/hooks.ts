@@ -49,3 +49,8 @@ export function useLogout() {
     },
   });
 }
+
+export function useActiveMembership() {
+  const me = useMe();
+  return me.data?.memberships[0];
+}

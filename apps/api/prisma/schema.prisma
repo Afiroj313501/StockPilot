@@ -35,6 +35,7 @@ model Store {
   updatedAt DateTime @updatedAt
 
   memberships StoreMembership[]
+  setting      StoreSetting?
 
   @@map("stores")
 }
@@ -66,4 +67,29 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+model StoreSetting {
+  id                       String   @id @default(uuid())
+  storeId                  String   @unique
+  businessCategory         String?
+  address                  String?
+  phone                    String?
+  contactEmail             String?
+  currency                 String   @default("USD") @db.VarChar(3)
+  timeZone                 String   @default("UTC")
+  taxName                  String   @default("Tax")
+  taxRatePercent           Decimal  @default(0) @db.Decimal(5, 2)
+  taxInclusive             Boolean  @default(false)
+  receiptFooter            String?
+  allowNegativeStock       Boolean  @default(false)
+  defaultLowStockThreshold Int      @default(5)
+  defaultLeadTimeDays      Int      @default(7)
+  onboardingCompletedAt    DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
+
+  @@map("store_settings")
 }

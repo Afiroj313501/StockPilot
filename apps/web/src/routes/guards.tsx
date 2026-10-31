@@ -1,8 +1,11 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { useMe } from '../features/auth/hooks';
+import { useActiveMembership, useMe } from '../features/auth/hooks';
+import { hasRole } from '../features/navigation';
+import { useSettings } from '../features/settings/hooks';
+import type { Role } from '../types/api';
 
-function LoadingScreen() {
+export function LoadingScreen() {
   return (
     <div role="status" className="grid min-h-screen place-items-center text-slate-500">
       Loading...
@@ -10,7 +13,7 @@ function LoadingScreen() {
   );
 }
 
-function ConnectionError({ onRetry }: { onRetry: () => void }) {
+export function ConnectionError({ onRetry }: { onRetry: () => void }) {
   return (
     <div role="alert" className="grid min-h-screen place-items-center px-4">
       <div className="max-w-sm text-center">
@@ -37,5 +40,21 @@ export function PublicOnly() {
   if (me.isPending) return <LoadingScreen />;
   if (me.isError) return <ConnectionError onRetry={() => void me.refetch()} />;
   if (me.data) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
+export function RequireOnboarding() {
+  const membership = useActiveMembership();
+  const settings = useSettings();
+  if (settings.isPending) return <LoadingScreen />;
+  if (settings.isError) return <ConnectionError onRetry={() => void settings.refetch()} />;
+  if (membership?.role === 'OWNER' && !settings.data.onboardingCompletedAt)
+    return <Navigate to="/onboarding" replace />;
+  return <Outlet />;
+}
+
+export function RequireRole({ minRole }: { minRole: Role }) {
+  const membership = useActiveMembership();
+  if (!membership || !hasRole(membership.role, minRole)) return <Navigate to="/" replace />;
   return <Outlet />;
 }

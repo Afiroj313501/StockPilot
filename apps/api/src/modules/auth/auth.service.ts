@@ -42,6 +42,7 @@ export async function registerOwner(
         data: { email: input.email, passwordHash, name: input.name },
       });
       const store = await tx.store.create({ data: { name: input.storeName } });
+      await tx.storeSetting.create({ data: { storeId: store.id } });
       await tx.storeMembership.create({
         data: { userId: user.id, storeId: store.id, role: Role.OWNER },
       });
