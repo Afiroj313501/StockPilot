@@ -65,7 +65,11 @@ describe('computePricing', () => {
 
   it('rejects a discount larger than the subtotal', () => {
     expect(() =>
-      computePricing([{ unitPriceCents: 1000n, quantity: 1 }], { type: 'AMOUNT', cents: 1001n }, NO_TAX),
+      computePricing(
+        [{ unitPriceCents: 1000n, quantity: 1 }],
+        { type: 'AMOUNT', cents: 1001n },
+        NO_TAX,
+      ),
     ).toThrow();
   });
 
@@ -104,6 +108,11 @@ describe('computePricing', () => {
       inclusive: false,
     });
     expect(r).toMatchObject({ subtotal: 0n, discountTotal: 0n, taxTotal: 0n, total: 0n });
-    expect(r.lines[0]).toEqual({ lineSubtotal: 0n, discountShare: 0n, taxShare: 0n, lineTotal: 0n });
+    expect(r.lines[0]).toEqual({
+      lineSubtotal: 0n,
+      discountShare: 0n,
+      taxShare: 0n,
+      lineTotal: 0n,
+    });
   });
 });

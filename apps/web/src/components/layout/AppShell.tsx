@@ -26,7 +26,7 @@ export function AppShell() {
   const storeName = settings.data?.storeName ?? membership.storeName;
   return (
     <div className="min-h-screen md:flex">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 print-hide md:hidden">
         <Brand />
         <button
           type="button"

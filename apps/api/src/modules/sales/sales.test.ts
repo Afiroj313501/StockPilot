@@ -55,7 +55,11 @@ function sell(cookie: string, body: Record<string, unknown>) {
   return request(app)
     .post('/api/v1/sales')
     .set('Cookie', cookie)
-    .send({ idempotencyKey: nextKey(), payment: { method: 'CASH', amountTendered: 1000 }, ...body });
+    .send({
+      idempotencyKey: nextKey(),
+      payment: { method: 'CASH', amountTendered: 1000 },
+      ...body,
+    });
 }
 
 const preview = (cookie: string, body: Record<string, unknown>) =>
@@ -95,7 +99,12 @@ describe('checkout totals', () => {
       taxTotal: '0.80',
       total: '8.80',
     });
-    expect(res.body.payments[0]).toMatchObject({ method: 'CASH', amount: '8.80', tendered: '10.00', change: '1.20' });
+    expect(res.body.payments[0]).toMatchObject({
+      method: 'CASH',
+      amount: '8.80',
+      tendered: '10.00',
+      change: '1.20',
+    });
     const line = res.body.items.find((i: { productId: string }) => i.productId === s.p1);
     expect(line).toMatchObject({
       quantity: 2,
@@ -108,7 +117,9 @@ describe('checkout totals', () => {
 
     expect(await stockOf(s.p1)).toBe(98);
     expect(await stockOf(s.p2)).toBe(99);
-    const movement = await prisma.stockMovement.findFirstOrThrow({ where: { productId: s.p1, type: 'SALE' } });
+    const movement = await prisma.stockMovement.findFirstOrThrow({
+      where: { productId: s.p1, type: 'SALE' },
+    });
     expect(movement).toMatchObject({
       quantityChange: -2,
       quantityBefore: 100,
@@ -117,7 +128,9 @@ describe('checkout totals', () => {
       referenceId: res.body.id,
     });
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 
@@ -127,20 +140,36 @@ describe('checkout totals', () => {
     const p3 = await createProduct(app, s.owner.cookie, { sellingPrice: 11 });
     await addStock(s.owner.cookie, p3, 10);
 
-    const res = await sell(s.cashierCookie, { items: one(p3), payment: { method: 'CASH', amountTendered: 11 } });
+    const res = await sell(s.cashierCookie, {
+      items: one(p3),
+      payment: { method: 'CASH', amountTendered: 11 },
+    });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ taxInclusive: true, subtotal: '11.00', taxTotal: '1.00', total: '11.00' });
+    expect(res.body).toMatchObject({
+      taxInclusive: true,
+      subtotal: '11.00',
+      taxTotal: '1.00',
+      total: '11.00',
+    });
     expect(res.body.items[0].lineTotal).toBe('11.00');
   });
 
   it('keeps a sale unchanged when settings or prices change afterwards', async () => {
     const s = await setup();
-    const made = await sell(s.cashierCookie, { items: one(s.p1, 2), payment: { method: 'CASH', amountTendered: 5 } });
+    const made = await sell(s.cashierCookie, {
+      items: one(s.p1, 2),
+      payment: { method: 'CASH', amountTendered: 5 },
+    });
 
     await patchSettings(s.owner.cookie, { taxRatePercent: 20, currency: 'EUR' });
-    await request(app).patch(`/api/v1/products/${s.p1}`).set('Cookie', s.owner.cookie).send({ sellingPrice: 9 });
+    await request(app)
+      .patch(`/api/v1/products/${s.p1}`)
+      .set('Cookie', s.owner.cookie)
+      .send({ sellingPrice: 9 });
 
-    const read = await request(app).get(`/api/v1/sales/${made.body.id}`).set('Cookie', s.cashierCookie);
+    const read = await request(app)
+      .get(`/api/v1/sales/${made.body.id}`)
+      .set('Cookie', s.cashierCookie);
     expect(read.status).toBe(200);
     expect(read.body).toMatchObject({ currency: 'USD', taxRatePercent: '10.00', total: '4.40' });
     expect(read.body.items[0].unitPrice).toBe('2.00');
@@ -185,7 +214,10 @@ describe('discounts and payments', () => {
       { productId: s.p2, quantity: 1 },
     ]; // subtotal 8.00
 
-    const percent = await sell(s.managerCookie, { items, discount: { type: 'PERCENT', value: 10 } });
+    const percent = await sell(s.managerCookie, {
+      items,
+      discount: { type: 'PERCENT', value: 10 },
+    });
     expect(percent.status).toBe(201);
     expect(percent.body).toMatchObject({
       discountType: 'PERCENT',
@@ -194,7 +226,10 @@ describe('discounts and payments', () => {
       taxTotal: '0.72',
       total: '7.92',
     });
-    const lineSum = percent.body.items.reduce((sum: number, i: { lineTotal: string }) => sum + cents(i.lineTotal), 0);
+    const lineSum = percent.body.items.reduce(
+      (sum: number, i: { lineTotal: string }) => sum + cents(i.lineTotal),
+      0,
+    );
     expect(lineSum).toBe(cents(percent.body.total));
 
     const amount = await sell(s.managerCookie, { items, discount: { type: 'AMOUNT', value: 1 } });
@@ -217,7 +252,10 @@ describe('discounts and payments', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     }
 
-    const byCashier = await sell(s.cashierCookie, { items, discount: { type: 'PERCENT', value: 10 } });
+    const byCashier = await sell(s.cashierCookie, {
+      items,
+      discount: { type: 'PERCENT', value: 10 },
+    });
     expect(byCashier.status).toBe(403);
     expect(byCashier.body.error.code).toBe('DISCOUNT_NOT_ALLOWED');
     expect(await saleCount()).toBe(2);
@@ -226,7 +264,8 @@ describe('discounts and payments', () => {
   it('validates payments: cash gives change, recorded methods must match the total', async () => {
     const s = await setup();
     const items = one(s.p1); // total 2.20
-    const pay = (method: string, amountTendered: number) => sell(s.cashierCookie, { items, payment: { method, amountTendered } });
+    const pay = (method: string, amountTendered: number) =>
+      sell(s.cashierCookie, { items, payment: { method, amountTendered } });
 
     const short = await pay('CASH', 2);
     expect(short.status).toBe(409);
@@ -237,7 +276,11 @@ describe('discounts and payments', () => {
 
     const card = await pay('CARD', 2.2);
     expect(card.status).toBe(201);
-    expect(card.body.payments[0]).toMatchObject({ method: 'CARD', tendered: '2.20', change: '0.00' });
+    expect(card.body.payments[0]).toMatchObject({
+      method: 'CARD',
+      tendered: '2.20',
+      change: '0.00',
+    });
     const cash = await pay('CASH', 2.2);
     expect(cash.status).toBe(201);
     expect(cash.body.payments[0].change).toBe('0.00');
@@ -263,7 +306,10 @@ describe('stock and product rules', () => {
     const store = await prisma.store.findUniqueOrThrow({ where: { id: s.owner.storeId } });
     expect(store.nextSaleNumber).toBe(1);
 
-    await prisma.storeSetting.update({ where: { storeId: s.owner.storeId }, data: { allowNegativeStock: true } });
+    await prisma.storeSetting.update({
+      where: { storeId: s.owner.storeId },
+      data: { allowNegativeStock: true },
+    });
     const allowed = await sell(s.cashierCookie, { items: one(p9, 4) });
     expect(allowed.status).toBe(201);
     expect(allowed.body.reference).toBe('S-000001');
@@ -275,7 +321,10 @@ describe('stock and product rules', () => {
     const b = await registerOwner(app, 'b');
     const foreign = await createProduct(app, b.cookie);
     await addStock(b.cookie, foreign, 10);
-    await request(app).patch(`/api/v1/products/${s.p2}`).set('Cookie', s.owner.cookie).send({ isActive: false });
+    await request(app)
+      .patch(`/api/v1/products/${s.p2}`)
+      .set('Cookie', s.owner.cookie)
+      .send({ isActive: false });
 
     const archived = await sell(s.cashierCookie, { items: one(s.p2) });
     expect(archived.status).toBe(409);
@@ -287,7 +336,12 @@ describe('stock and product rules', () => {
 
     const bad: Record<string, unknown>[] = [
       { items: [] },
-      { items: [{ productId: s.p1, quantity: 1 }, { productId: s.p1, quantity: 2 }] },
+      {
+        items: [
+          { productId: s.p1, quantity: 1 },
+          { productId: s.p1, quantity: 2 },
+        ],
+      },
       { items: one(s.p1, 0) },
       { items: one(s.p1, 1.5) },
       { items: one(s.p1), customerName: 'x'.repeat(101) },
@@ -347,7 +401,9 @@ describe('idempotency and concurrency', () => {
     const p9 = await createProduct(app, s.owner.cookie, { sellingPrice: 2 });
     await addStock(s.owner.cookie, p9, 10);
 
-    const results = await Promise.all(Array.from({ length: 5 }, () => sell(s.cashierCookie, { items: one(p9, 3) })));
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => sell(s.cashierCookie, { items: one(p9, 3) })),
+    );
     const ok = results.filter((r) => r.status === 201);
     expect(ok).toHaveLength(3);
     expect(results.filter((r) => r.status === 409)).toHaveLength(2);
@@ -356,7 +412,9 @@ describe('idempotency and concurrency', () => {
     expect(await saleCount()).toBe(3);
     expect(await prisma.stockMovement.count({ where: { productId: p9, type: 'SALE' } })).toBe(3);
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 });
@@ -371,7 +429,13 @@ describe('preview', () => {
 
     const view = await preview(s.cashierCookie, { items });
     expect(view.status).toBe(200);
-    expect(view.body).toMatchObject({ currency: 'USD', taxName: 'VAT', subtotal: '8.00', taxTotal: '0.80', total: '8.80' });
+    expect(view.body).toMatchObject({
+      currency: 'USD',
+      taxName: 'VAT',
+      subtotal: '8.00',
+      taxTotal: '0.80',
+      total: '8.80',
+    });
     expect(view.body.lines).toHaveLength(2);
     expect(await saleCount()).toBe(0);
     expect(await stockOf(s.p1)).toBe(100);
@@ -380,9 +444,15 @@ describe('preview', () => {
     expect(sold.body.total).toBe(view.body.total);
     expect(sold.body.taxTotal).toBe(view.body.taxTotal);
 
-    const discounted = await preview(s.managerCookie, { items, discount: { type: 'PERCENT', value: 10 } });
+    const discounted = await preview(s.managerCookie, {
+      items,
+      discount: { type: 'PERCENT', value: 10 },
+    });
     expect(discounted.body.total).toBe('7.92');
-    const byCashier = await preview(s.cashierCookie, { items, discount: { type: 'PERCENT', value: 10 } });
+    const byCashier = await preview(s.cashierCookie, {
+      items,
+      discount: { type: 'PERCENT', value: 10 },
+    });
     expect(byCashier.status).toBe(403);
     expect((await preview(s.cashierCookie, { items: [] })).status).toBe(400);
   });
@@ -407,14 +477,20 @@ describe('history and access', () => {
       paymentMethod: 'CASH',
     });
 
-    const own = await request(app).get(`/api/v1/sales/${mine.body.id}`).set('Cookie', s.cashierCookie);
+    const own = await request(app)
+      .get(`/api/v1/sales/${mine.body.id}`)
+      .set('Cookie', s.cashierCookie);
     expect(own.status).toBe(200);
-    const notMine = await request(app).get(`/api/v1/sales/${theirs.body.id}`).set('Cookie', s.cashierCookie);
+    const notMine = await request(app)
+      .get(`/api/v1/sales/${theirs.body.id}`)
+      .set('Cookie', s.cashierCookie);
     expect(notMine.status).toBe(404);
 
     const managerList = await request(app).get('/api/v1/sales').set('Cookie', s.managerCookie);
     expect(managerList.body.total).toBe(2);
-    const ownerRead = await request(app).get(`/api/v1/sales/${theirs.body.id}`).set('Cookie', s.owner.cookie);
+    const ownerRead = await request(app)
+      .get(`/api/v1/sales/${theirs.body.id}`)
+      .set('Cookie', s.owner.cookie);
     expect(ownerRead.status).toBe(200);
   });
 
@@ -425,11 +501,17 @@ describe('history and access', () => {
     const page1 = await request(app).get('/api/v1/sales?pageSize=2').set('Cookie', s.owner.cookie);
     expect(page1.body.items.map((i: { number: number }) => i.number)).toEqual([3, 2]);
     expect(page1.body).toMatchObject({ total: 3, totalPages: 2 });
-    const page2 = await request(app).get('/api/v1/sales?pageSize=2&page=2').set('Cookie', s.owner.cookie);
+    const page2 = await request(app)
+      .get('/api/v1/sales?pageSize=2&page=2')
+      .set('Cookie', s.owner.cookie);
     expect(page2.body.items.map((i: { number: number }) => i.number)).toEqual([1]);
 
-    expect((await request(app).get('/api/v1/sales?pageSize=1000').set('Cookie', s.owner.cookie)).status).toBe(400);
-    expect((await request(app).get('/api/v1/sales/not-a-uuid').set('Cookie', s.owner.cookie)).status).toBe(400);
+    expect(
+      (await request(app).get('/api/v1/sales?pageSize=1000').set('Cookie', s.owner.cookie)).status,
+    ).toBe(400);
+    expect(
+      (await request(app).get('/api/v1/sales/not-a-uuid').set('Cookie', s.owner.cookie)).status,
+    ).toBe(400);
   });
 
   it("never exposes or sells another store's data", async () => {

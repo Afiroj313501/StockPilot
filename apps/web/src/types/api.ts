@@ -200,7 +200,6 @@ export interface ReceivePayload {
   items: { productId: string; quantity: number }[];
 }
 
-
 export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE' | 'OTHER';
 
 export interface SaleLine {

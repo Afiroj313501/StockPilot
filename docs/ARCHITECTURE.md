@@ -90,3 +90,26 @@
 - Web: `/purchases`, `/purchases/new`, `/purchases/:id`, `/purchases/:id/edit` (manager+).
 - Limits: no per-delivery cost override, no "close short" action, no printing, `averageCost` not
   shown in the UI yet.
+
+## Point of sale (chunk 13)
+
+- `Sale`, `SaleItem`, `Payment`. Per-store receipt numbers (`S-000001`) from `Store.nextSaleNumber`.
+- The browser sends only `{ productId, quantity }` lines, an optional discount, payment and an
+  `idempotencyKey`. The server prices everything from current database prices and settings.
+  `POST /sales/preview` uses the same function as checkout, so the cart display equals the saved sale.
+- Money math is in `pricing.ts`: integer cents (bigint), half-up rounding.
+  Discount (percent or amount, never above the subtotal) comes off the subtotal first.
+  Tax is calculated once per sale: exclusive `tax = round(net x rate)`, total = net + tax;
+  inclusive `tax = round(net x rate / (100 + rate))`, total = net.
+  Discount and tax are spread over lines by largest remainder, so lines add up exactly.
+- Each sale snapshots currency, tax name, rate, inclusive flag, and each line's product name, SKU,
+  unit price and unit cost (average cost, else cost price). Later setting or price changes never
+  rewrite a sale.
+- Checkout transaction: lock products (id order) -> replay check -> price -> stock check ->
+  `expectedTotal` check -> payment check -> receipt number -> save sale, items, payment ->
+  `SALE` ledger movements. A repeated key returns the original sale (200); another cashier's key is 409.
+- Payments: CASH (tendered, change) or recorded-only CARD, MOBILE, OTHER (must equal the total).
+  No payment gateway is integrated.
+- Roles: all roles can sell. Discounts are manager+. Cashiers see only their own sales.
+- Endpoints: `POST /sales/preview`, `POST /sales`, `GET /sales`, `GET /sales/:id`.
+- Limits: no returns or voids yet; one payment and one tax rate per sale; no date filters on history.

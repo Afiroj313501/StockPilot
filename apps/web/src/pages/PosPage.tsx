@@ -59,7 +59,8 @@ export function PosPage() {
   const [paying, setPaying] = useState(false);
 
   const discount = canDiscount ? parseDiscount(discountType, debouncedDiscount) : null;
-  const discountInvalid = discountText.trim() !== '' && parseDiscount(discountType, discountText) === null;
+  const discountInvalid =
+    discountText.trim() !== '' && parseDiscount(discountType, discountText) === null;
   const discountPending = discountText.trim() !== debouncedDiscount;
 
   const items = cart.map((l) => ({ productId: l.productId, quantity: l.quantity }));
@@ -82,10 +83,19 @@ export function PosPage() {
     setNotice(null);
     setCart(
       existing
-        ? cart.map((l) => (l.productId === p.id ? { ...l, quantity: next, stock: p.stockQuantity } : l))
+        ? cart.map((l) =>
+            l.productId === p.id ? { ...l, quantity: next, stock: p.stockQuantity } : l,
+          )
         : [
             ...cart,
-            { productId: p.id, name: p.name, sku: p.sku, unitPrice: p.sellingPrice, stock: p.stockQuantity, quantity: 1 },
+            {
+              productId: p.id,
+              name: p.name,
+              sku: p.sku,
+              unitPrice: p.sellingPrice,
+              stock: p.stockQuantity,
+              quantity: 1,
+            },
           ],
     );
     setSearch('');
@@ -110,12 +120,21 @@ export function PosPage() {
     const q = search.trim();
     if (!q) return;
     try {
-      const res = await api<Paginated<Product>>(`/products?${new URLSearchParams({ search: q, status: 'active', pageSize: '5' })}`);
+      const res = await api<Paginated<Product>>(
+        `/products?${new URLSearchParams({ search: q, status: 'active', pageSize: '5' })}`,
+      );
       const lower = q.toLowerCase();
-      const exact = res.items.find((p) => p.barcode?.toLowerCase() === lower || p.sku.toLowerCase() === lower);
+      const exact = res.items.find(
+        (p) => p.barcode?.toLowerCase() === lower || p.sku.toLowerCase() === lower,
+      );
       const pick = exact ?? (res.items.length === 1 ? res.items[0] : undefined);
       if (pick) addProduct(pick);
-      else setNotice(res.items.length === 0 ? `No product found for “${q}”.` : 'Several products match. Pick one from the list.');
+      else
+        setNotice(
+          res.items.length === 0
+            ? `No product found for “${q}”.`
+            : 'Several products match. Pick one from the list.',
+        );
     } catch {
       setNotice('Could not search products.');
     }
@@ -130,7 +149,12 @@ export function PosPage() {
   };
 
   const canCharge =
-    cart.length > 0 && Boolean(priced) && !previewError && !preview.isFetching && !discountInvalid && !discountPending;
+    cart.length > 0 &&
+    Boolean(priced) &&
+    !previewError &&
+    !preview.isFetching &&
+    !discountInvalid &&
+    !discountPending;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
@@ -162,11 +186,16 @@ export function PosPage() {
         )}
 
         {term !== '' && (
-          <ul aria-label="Search results" className="mt-3 divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <ul
+            aria-label="Search results"
+            className="mt-3 divide-y divide-slate-100 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200"
+          >
             {results.isError ? (
               <li className="px-4 py-3 text-sm text-red-700">Could not search products.</li>
             ) : (results.data?.items ?? []).length === 0 ? (
-              <li className="px-4 py-3 text-sm text-slate-500">{results.isFetching ? 'Searching…' : 'No matching products.'}</li>
+              <li className="px-4 py-3 text-sm text-slate-500">
+                {results.isFetching ? 'Searching…' : 'No matching products.'}
+              </li>
             ) : (
               (results.data?.items ?? []).map((p) => (
                 <li key={p.id}>
@@ -182,7 +211,9 @@ export function PosPage() {
                         {p.barcode ? ` · ${p.barcode}` : ''} · {p.stockQuantity} in stock
                       </span>
                     </span>
-                    <span className="font-medium text-navy-900">{formatMoney(p.sellingPrice, currency)}</span>
+                    <span className="font-medium text-navy-900">
+                      {formatMoney(p.sellingPrice, currency)}
+                    </span>
                   </button>
                 </li>
               ))
@@ -191,20 +222,29 @@ export function PosPage() {
         )}
       </section>
 
-      <section aria-labelledby="cart-heading" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+      <section
+        aria-labelledby="cart-heading"
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
+      >
         <div className="flex items-center justify-between">
           <h2 id="cart-heading" className="text-lg font-semibold text-navy-900">
             Cart
           </h2>
           {cart.length > 0 && (
-            <button type="button" onClick={() => setCart([])} className="text-sm font-medium text-slate-600 hover:underline">
+            <button
+              type="button"
+              onClick={() => setCart([])}
+              className="text-sm font-medium text-slate-600 hover:underline"
+            >
               Clear
             </button>
           )}
         </div>
 
         {cart.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">The cart is empty. Scan or search to add products.</p>
+          <p className="py-8 text-center text-sm text-slate-500">
+            The cart is empty. Scan or search to add products.
+          </p>
         ) : (
           <ul className="mt-2 divide-y divide-slate-100">
             {cart.map((l) => {
@@ -312,7 +352,8 @@ export function PosPage() {
                 )}
                 <div className="flex justify-between">
                   <dt className="text-slate-600">
-                    {priced.taxName} ({priced.taxRatePercent}%{priced.taxInclusive ? ', included' : ''})
+                    {priced.taxName} ({priced.taxRatePercent}%
+                    {priced.taxInclusive ? ', included' : ''})
                   </dt>
                   <dd>{formatMoney(priced.taxTotal, currency)}</dd>
                 </div>

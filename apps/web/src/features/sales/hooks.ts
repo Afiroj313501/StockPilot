@@ -10,10 +10,14 @@ import type {
 } from '../../types/api';
 
 // The server prices the cart; the browser never calculates totals itself.
-export function useSalePreview(items: { productId: string; quantity: number }[], discount: CartDiscount | null) {
+export function useSalePreview(
+  items: { productId: string; quantity: number }[],
+  discount: CartDiscount | null,
+) {
   return useQuery({
     queryKey: ['sales', 'preview', items, discount],
-    queryFn: () => api<SalePreview>('/sales/preview', { method: 'POST', body: { items, discount } }),
+    queryFn: () =>
+      api<SalePreview>('/sales/preview', { method: 'POST', body: { items, discount } }),
     enabled: items.length > 0,
     placeholderData: keepPreviousData,
     retry: false,

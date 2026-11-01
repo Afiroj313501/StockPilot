@@ -48,7 +48,14 @@ salesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const store = getStore(res);
-    res.json(await listSales(store.storeId, store.role, getAuth(res).user.id, listSalesQuery.parse(req.query)));
+    res.json(
+      await listSales(
+        store.storeId,
+        store.role,
+        getAuth(res).user.id,
+        listSalesQuery.parse(req.query),
+      ),
+    );
   }),
 );
 
@@ -56,6 +63,13 @@ salesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
     const store = getStore(res);
-    res.json(await getSale(store.storeId, store.role, getAuth(res).user.id, uuidParam.parse(req.params.id)));
+    res.json(
+      await getSale(
+        store.storeId,
+        store.role,
+        getAuth(res).user.id,
+        uuidParam.parse(req.params.id),
+      ),
+    );
   }),
 );

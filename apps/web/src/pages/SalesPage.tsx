@@ -51,26 +51,47 @@ export function SalesPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th scope="col" className="px-4 py-3 font-medium">Receipt</th>
-                  <th scope="col" className="px-4 py-3 font-medium">When</th>
-                  {seesAll && <th scope="col" className="px-4 py-3 font-medium">Cashier</th>}
-                  <th scope="col" className="px-4 py-3 text-right font-medium">Units</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Payment</th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium">Total</th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Receipt
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    When
+                  </th>
+                  {seesAll && (
+                    <th scope="col" className="px-4 py-3 font-medium">
+                      Cashier
+                    </th>
+                  )}
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    Units
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Payment
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {sales.data.items.map((s) => (
                   <tr key={s.id}>
                     <td className="px-4 py-3">
-                      <Link to={`/sales/${s.id}`} className="font-medium text-blue-600 hover:underline">
+                      <Link
+                        to={`/sales/${s.id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
                         {s.reference}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3">{formatDateTime(s.createdAt, timeZone)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {formatDateTime(s.createdAt, timeZone)}
+                    </td>
                     {seesAll && <td className="px-4 py-3">{s.cashierName}</td>}
                     <td className="px-4 py-3 text-right">{s.unitCount}</td>
-                    <td className="px-4 py-3">{s.paymentMethod ? PAYMENT_LABEL[s.paymentMethod] : '—'}</td>
+                    <td className="px-4 py-3">
+                      {s.paymentMethod ? PAYMENT_LABEL[s.paymentMethod] : '—'}
+                    </td>
                     <td className="px-4 py-3 text-right">{formatMoney(s.total, currency)}</td>
                   </tr>
                 ))}
@@ -79,7 +100,12 @@ export function SalesPage() {
           </div>
         )}
         {sales.data && (
-          <Pagination page={sales.data.page} totalPages={sales.data.totalPages} total={sales.data.total} onPage={setPage} />
+          <Pagination
+            page={sales.data.page}
+            totalPages={sales.data.totalPages}
+            total={sales.data.total}
+            onPage={setPage}
+          />
         )}
       </div>
     </div>

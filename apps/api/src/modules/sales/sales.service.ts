@@ -26,7 +26,11 @@ const fromCents = (c: bigint) => {
 };
 const money = (c: bigint) => formatMoney(fromCents(c));
 const keyReused = () =>
-  new AppError(409, 'IDEMPOTENCY_KEY_REUSED', 'This idempotency key was already used for a different request');
+  new AppError(
+    409,
+    'IDEMPOTENCY_KEY_REUSED',
+    'This idempotency key was already used for a different request',
+  );
 
 // Loads the products and settings and prices the cart. Used by both preview and checkout,
 // so the cart display and the saved sale always come from the same rules.
@@ -52,10 +56,18 @@ async function priceCart(
 
   const unavailable = lines.find((l) => !l.product.isActive);
   if (unavailable) {
-    throw new AppError(409, 'PRODUCT_UNAVAILABLE', `“${unavailable.product.name}” is archived and cannot be sold.`);
+    throw new AppError(
+      409,
+      'PRODUCT_UNAVAILABLE',
+      `“${unavailable.product.name}” is archived and cannot be sold.`,
+    );
   }
 
-  const settings = await db.storeSetting.upsert({ where: { storeId }, create: { storeId }, update: {} });
+  const settings = await db.storeSetting.upsert({
+    where: { storeId },
+    create: { storeId },
+    update: {},
+  });
 
   const discountInput: DiscountInput | null = discount
     ? discount.type === 'PERCENT'
@@ -175,7 +187,11 @@ export async function checkout(
           ORDER BY id
           FOR UPDATE`;
         if (locked.length !== ids.length) {
-          throw new AppError(400, 'INVALID_PRODUCT', 'One or more products were not found in this store');
+          throw new AppError(
+            400,
+            'INVALID_PRODUCT',
+            'One or more products were not found in this store',
+          );
         }
 
         // 2. Repeated request? Checked after the locks, so a parallel retry sees the first
@@ -207,7 +223,10 @@ export async function checkout(
         }
 
         // 5. The cashier must be charging the amount they saw.
-        if (input.expectedTotal !== undefined && numberToCents(input.expectedTotal) !== pricing.total) {
+        if (
+          input.expectedTotal !== undefined &&
+          numberToCents(input.expectedTotal) !== pricing.total
+        ) {
           throw new AppError(
             409,
             'TOTAL_MISMATCH',
@@ -219,10 +238,18 @@ export async function checkout(
         const tendered = numberToCents(input.payment.amountTendered);
         if (input.payment.method === 'CASH') {
           if (tendered < pricing.total) {
-            throw new AppError(409, 'PAYMENT_INSUFFICIENT', `The cash received is less than the total of ${money(pricing.total)}.`);
+            throw new AppError(
+              409,
+              'PAYMENT_INSUFFICIENT',
+              `The cash received is less than the total of ${money(pricing.total)}.`,
+            );
           }
         } else if (tendered !== pricing.total) {
-          throw new AppError(409, 'PAYMENT_AMOUNT_MISMATCH', `The amount must equal the total of ${money(pricing.total)}.`);
+          throw new AppError(
+            409,
+            'PAYMENT_AMOUNT_MISMATCH',
+            `The amount must equal the total of ${money(pricing.total)}.`,
+          );
         }
         const change = input.payment.method === 'CASH' ? tendered - pricing.total : 0n;
 
@@ -286,7 +313,10 @@ export async function checkout(
           const line = lines.find((l) => l.product.id === item.productId)!;
           const before = line.product.stockQuantity;
           const after = before - line.quantity;
-          await tx.product.update({ where: { id: line.product.id }, data: { stockQuantity: after } });
+          await tx.product.update({
+            where: { id: line.product.id },
+            data: { stockQuantity: after },
+          });
           await tx.stockMovement.create({
             data: {
               storeId,

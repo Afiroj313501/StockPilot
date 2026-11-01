@@ -1,7 +1,9 @@
 import {
   Boxes,
+  Calculator,
   ClipboardList,
   LayoutDashboard,
+  Receipt,
   ShoppingCart,
   Settings,
   Tags,
@@ -22,6 +24,8 @@ export interface NavItem {
 }
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, minRole: 'CASHIER' },
+  { to: '/pos', label: 'Point of sale', icon: Calculator, minRole: 'CASHIER' },
+  { to: '/sales', label: 'Sales', icon: Receipt, minRole: 'CASHIER' },
   { to: '/products', label: 'Products', icon: Boxes, minRole: 'CASHIER' },
   { to: '/categories', label: 'Categories', icon: Tags, minRole: 'MANAGER' },
   { to: '/inventory', label: 'Inventory', icon: ClipboardList, minRole: 'MANAGER' },

@@ -23,7 +23,14 @@ interface Props {
 const AMOUNT_RE = /^\d{1,9}(\.\d{1,2})?$/;
 const toCents = (v: string) => Math.round(Number(v) * 100);
 
-function CheckoutForm({ preview, items, discount, customerName, onDone, onClose }: Omit<Props, 'open'>) {
+function CheckoutForm({
+  preview,
+  items,
+  discount,
+  customerName,
+  onDone,
+  onClose,
+}: Omit<Props, 'open'>) {
   const checkout = useCheckout();
   const qc = useQueryClient();
   const [method, setMethod] = useState<PaymentMethod>('CASH');
@@ -69,7 +76,9 @@ function CheckoutForm({ preview, items, discount, customerName, onDone, onClose 
           if (err instanceof ApiError && err.code === 'TOTAL_MISMATCH') {
             void qc.invalidateQueries({ queryKey: ['sales', 'preview'] }); // show the new total
           }
-          setFormError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+          setFormError(
+            err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
+          );
         },
       },
     );
@@ -90,7 +99,11 @@ function CheckoutForm({ preview, items, discount, customerName, onDone, onClose 
         </div>
       )}
 
-      <SelectField label="Payment method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+      <SelectField
+        label="Payment method"
+        value={method}
+        onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+      >
         {(Object.keys(PAYMENT_LABEL) as PaymentMethod[]).map((m) => (
           <option key={m} value={m}>
             {PAYMENT_LABEL[m]}
@@ -125,8 +138,8 @@ function CheckoutForm({ preview, items, discount, customerName, onDone, onClose 
         </div>
       ) : (
         <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-          Record that the full amount was received by this method. StockPilot does not process card or
-          wallet payments; it only records them.
+          Record that the full amount was received by this method. StockPilot does not process card
+          or wallet payments; it only records them.
         </p>
       )}
 

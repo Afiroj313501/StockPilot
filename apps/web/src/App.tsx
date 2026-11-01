@@ -14,6 +14,9 @@ import { SuppliersPage } from './pages/SuppliersPage';
 import { PurchaseDetailPage } from './pages/PurchaseDetailPage';
 import { PurchaseFormPage } from './pages/PurchaseFormPage';
 import { PurchasesPage } from './pages/PurchasesPage';
+import { PosPage } from './pages/PosPage';
+import { SaleDetailPage } from './pages/SaleDetailPage';
+import { SalesPage } from './pages/SalesPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -29,6 +32,9 @@ export function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/pos" element={<PosPage />} />
+            <Route path="/sales" element={<SalesPage />} />
+            <Route path="/sales/:id" element={<SaleDetailPage />} />
             <Route element={<RequireRole minRole="MANAGER" />}>
               <Route path="/products/new" element={<ProductFormPage />} />
               <Route path="/products/:id/edit" element={<ProductFormPage />} />

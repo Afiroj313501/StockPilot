@@ -5,3 +5,13 @@
 body {
   @apply bg-slate-50 text-navy-900 antialiased;
 }
+
+@media print {
+  body {
+    background: #fff;
+  }
+  #sidebar,
+  .print-hide {
+    display: none !important;
+  }
+}

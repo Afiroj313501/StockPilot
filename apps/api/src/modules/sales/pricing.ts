@@ -4,8 +4,7 @@ import { AppError } from '../../utils/httpError';
 // (7.50% = 750). Rounding is always half up.
 
 export type DiscountInput =
-  | { type: 'PERCENT'; hundredths: bigint }
-  | { type: 'AMOUNT'; cents: bigint };
+  { type: 'PERCENT'; hundredths: bigint } | { type: 'AMOUNT'; cents: bigint };
 
 export interface PricingLine {
   unitPriceCents: bigint;
@@ -68,10 +67,15 @@ export function computePricing(
 
   // 1. Discount comes off the subtotal, before tax.
   let discountTotal = 0n;
-  if (discount?.type === 'PERCENT') discountTotal = divRound(subtotal * discount.hundredths, 10_000n);
+  if (discount?.type === 'PERCENT')
+    discountTotal = divRound(subtotal * discount.hundredths, 10_000n);
   if (discount?.type === 'AMOUNT') discountTotal = discount.cents;
   if (discountTotal > subtotal) {
-    throw new AppError(400, 'DISCOUNT_TOO_LARGE', 'The discount cannot be more than the sale subtotal');
+    throw new AppError(
+      400,
+      'DISCOUNT_TOO_LARGE',
+      'The discount cannot be more than the sale subtotal',
+    );
   }
   const netBase = subtotal - discountTotal;
 

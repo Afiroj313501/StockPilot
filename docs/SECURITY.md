@@ -66,3 +66,12 @@ Reporting procedure and known limitations are added in Phase 13.
 - Row locking (order, then products in id order) and idempotency keys prevent double-applied or
   over-received stock (covered by concurrency tests, including receive versus cancel).
 - Stock changes from receiving always go through the ledger, so `GET /inventory/integrity` still reconciles.
+
+## Point of sale (chunk 13)
+
+- Totals are never accepted from the browser: bodies are strict, so `total`, `unitPrice`, `storeId`,
+  `cashierId` and similar fields are rejected. `expectedTotal` is only a safety check (409 on mismatch).
+- Product lookups are scoped by storeId (another store's product is "invalid"); sale reads are scoped
+  by storeId, and cashiers are further limited to their own sales (404 otherwise).
+- Row locks plus idempotency keys prevent overselling and double sales (covered by concurrency tests).
+- Discounts require MANAGER or OWNER. Known gap: no configurable cashier discount limit yet.
