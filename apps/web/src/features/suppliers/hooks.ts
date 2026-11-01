@@ -39,3 +39,13 @@ export function useSaveSupplier() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['suppliers'] }),
   });
 }
+
+// Active suppliers for pickers (up to 100).
+export function useSupplierOptions() {
+  return useQuery({
+    queryKey: ['suppliers', 'options'],
+    queryFn: async () =>
+      (await api<Paginated<Supplier>>('/suppliers?status=active&pageSize=100')).items,
+    retry: false,
+  });
+}

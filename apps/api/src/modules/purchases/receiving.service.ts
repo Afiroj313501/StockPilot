@@ -9,7 +9,11 @@ import type { ReceivePurchaseInput } from './receiving.schemas';
 const MAX_STOCK = 2_000_000_000; // stays inside a 32-bit integer column
 
 const keyReused = () =>
-  new AppError(409, 'IDEMPOTENCY_KEY_REUSED', 'This idempotency key was already used for a different request');
+  new AppError(
+    409,
+    'IDEMPOTENCY_KEY_REUSED',
+    'This idempotency key was already used for a different request',
+  );
 
 export async function receivePurchase(
   storeId: string,
@@ -57,7 +61,11 @@ export async function receivePurchase(
         for (const line of input.items) {
           const item = itemByProduct.get(line.productId);
           if (!item) {
-            throw new AppError(400, 'PRODUCT_NOT_ON_ORDER', 'A product in this receipt is not on the order');
+            throw new AppError(
+              400,
+              'PRODUCT_NOT_ON_ORDER',
+              'A product in this receipt is not on the order',
+            );
           }
           const remaining = item.quantityOrdered - item.quantityReceived;
           if (line.quantity > remaining) {
@@ -77,7 +85,10 @@ export async function receivePurchase(
           ORDER BY id
           FOR UPDATE`;
         const products = new Map(
-          (await tx.product.findMany({ where: { storeId, id: { in: productIds } } })).map((p) => [p.id, p]),
+          (await tx.product.findMany({ where: { storeId, id: { in: productIds } } })).map((p) => [
+            p.id,
+            p,
+          ]),
         );
 
         // 6. Record the receipt, then apply each line: stock, average cost, order line, ledger.
@@ -94,12 +105,17 @@ export async function receivePurchase(
         for (const line of input.items) {
           const item = itemByProduct.get(line.productId)!;
           const product = products.get(line.productId);
-          if (!product) throw new AppError(400, 'INVALID_PRODUCT', 'Product not found in this store');
+          if (!product)
+            throw new AppError(400, 'INVALID_PRODUCT', 'Product not found in this store');
 
           const before = product.stockQuantity;
           const after = before + line.quantity;
           if (after > MAX_STOCK) {
-            throw new AppError(400, 'QUANTITY_TOO_LARGE', 'The resulting stock quantity is too large');
+            throw new AppError(
+              400,
+              'QUANTITY_TOO_LARGE',
+              'The resulting stock quantity is too large',
+            );
           }
           const average = nextAverageCost(
             before,

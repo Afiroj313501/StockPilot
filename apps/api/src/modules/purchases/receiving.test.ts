@@ -3,7 +3,13 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
 import { prisma } from '../../db/prisma';
 import { resetDb } from '../../test/db';
-import { addMember, createProduct, createSupplier, loginAs, registerOwner } from '../../test/helpers';
+import {
+  addMember,
+  createProduct,
+  createSupplier,
+  loginAs,
+  registerOwner,
+} from '../../test/helpers';
 
 const app = createApp({ authRateLimitMax: 1000 });
 
@@ -84,9 +90,14 @@ describe('receiving stock', () => {
     });
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('RECEIVED');
-    expect(res.body.items.every((i: { quantityRemaining: number }) => i.quantityRemaining === 0)).toBe(true);
+    expect(
+      res.body.items.every((i: { quantityRemaining: number }) => i.quantityRemaining === 0),
+    ).toBe(true);
     expect(res.body.receipts).toHaveLength(1);
-    expect(res.body.receipts[0]).toMatchObject({ receivedByName: 'MANAGER a', note: 'Delivery #77' });
+    expect(res.body.receipts[0]).toMatchObject({
+      receivedByName: 'MANAGER a',
+      note: 'Delivery #77',
+    });
     expect(res.body.receipts[0].items).toHaveLength(2);
 
     expect(await stockOf(s.p1)).toBe(10);
@@ -106,7 +117,9 @@ describe('receiving stock', () => {
     const product = await prisma.product.findUniqueOrThrow({ where: { id: s.p1 } });
     expect(product.averageCost?.toFixed(4)).toBe('2.0000'); // no stock before, so the receipt cost
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 
@@ -143,7 +156,9 @@ describe('receiving stock', () => {
     expect(await stockOf(s.p2)).toBe(5);
     expect(await movementCount(s.p1)).toBe(2);
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 
@@ -164,13 +179,17 @@ describe('receiving stock', () => {
     expect(mixed.status).toBe(409);
     expect(await stockOf(s.p2)).toBe(0); // the valid line was not applied either
 
-    expect((await receive(s.managerCookie, id, { items: [{ productId: s.p1, quantity: 6 }] })).status).toBe(201);
+    expect(
+      (await receive(s.managerCookie, id, { items: [{ productId: s.p1, quantity: 6 }] })).status,
+    ).toBe(201);
     const again = await receive(s.managerCookie, id, { items: [{ productId: s.p1, quantity: 5 }] });
     expect(again.status).toBe(409); // only 4 left
     expect(again.body.error.code).toBe('OVER_RECEIPT');
 
     const other = await createProduct(app, s.owner.cookie);
-    const foreignLine = await receive(s.managerCookie, id, { items: [{ productId: other, quantity: 1 }] });
+    const foreignLine = await receive(s.managerCookie, id, {
+      items: [{ productId: other, quantity: 1 }],
+    });
     expect(foreignLine.status).toBe(400);
     expect(foreignLine.body.error.code).toBe('PRODUCT_NOT_ON_ORDER');
 
@@ -237,7 +256,9 @@ describe('idempotency and concurrency', () => {
     const id = await approvedOrder(s);
     const body = { idempotencyKey: 'parallel-rcv-01', items: [{ productId: s.p1, quantity: 4 }] };
 
-    const results = await Promise.all(Array.from({ length: 5 }, () => receive(s.managerCookie, id, body)));
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => receive(s.managerCookie, id, body)),
+    );
     expect(results.map((r) => r.status).sort()).toEqual([200, 200, 200, 200, 201]);
     expect(await stockOf(s.p1)).toBe(4);
     expect(await receiptCount()).toBe(1);
@@ -249,7 +270,9 @@ describe('idempotency and concurrency', () => {
     const id = await approvedOrder(s, [{ productId: s.p1, quantityOrdered: 10, unitCost: 2 }]);
 
     const results = await Promise.all(
-      Array.from({ length: 5 }, () => receive(s.managerCookie, id, { items: [{ productId: s.p1, quantity: 4 }] })),
+      Array.from({ length: 5 }, () =>
+        receive(s.managerCookie, id, { items: [{ productId: s.p1, quantity: 4 }] }),
+      ),
     );
     expect(results.filter((r) => r.status === 201)).toHaveLength(2);
     expect(results.filter((r) => r.status === 409)).toHaveLength(3);
@@ -310,7 +333,11 @@ describe('cost, validation and access', () => {
   it('rejects invalid bodies and records nothing', async () => {
     const s = await setup();
     const id = await approvedOrder(s);
-    const line = (extra: Record<string, unknown> = {}) => ({ productId: s.p1, quantity: 1, ...extra });
+    const line = (extra: Record<string, unknown> = {}) => ({
+      productId: s.p1,
+      quantity: 1,
+      ...extra,
+    });
 
     const bad: Record<string, unknown>[] = [
       { items: [] },

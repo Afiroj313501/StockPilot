@@ -17,3 +17,14 @@ export function formatDateTime(iso: string, timeZone: string): string {
     return iso;
   }
 }
+
+// For date-only values such as "2026-12-01" (no time zone shifting).
+export function formatDate(dateOnly: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(
+      new Date(`${dateOnly}T00:00:00Z`),
+    );
+  } catch {
+    return dateOnly;
+  }
+}

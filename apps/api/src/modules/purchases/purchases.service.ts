@@ -2,7 +2,11 @@ import { Prisma, type PurchaseStatus } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../utils/httpError';
 import { formatMoney, toDecimal } from '../../utils/money';
-import type { CreatePurchaseInput, ListPurchasesQuery, UpdatePurchaseInput } from './purchases.schemas';
+import type {
+  CreatePurchaseInput,
+  ListPurchasesQuery,
+  UpdatePurchaseInput,
+} from './purchases.schemas';
 
 const listInclude = {
   supplier: { select: { id: true, name: true } },
@@ -38,7 +42,9 @@ export const notFound = () => new AppError(404, 'NOT_FOUND', 'Purchase order not
 const dateOnly = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const toDate = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00.000Z`) : null);
 
-function orderTotal(items: { quantityOrdered: number; unitCost: Prisma.Decimal }[]): Prisma.Decimal {
+function orderTotal(
+  items: { quantityOrdered: number; unitCost: Prisma.Decimal }[],
+): Prisma.Decimal {
   return items.reduce(
     (sum, i) => sum.plus(i.unitCost.times(i.quantityOrdered)),
     new Prisma.Decimal(0),
@@ -104,7 +110,11 @@ async function assertSupplier(tx: Prisma.TransactionClient, storeId: string, sup
   });
   if (!supplier) throw new AppError(400, 'INVALID_SUPPLIER', 'Supplier not found in this store');
   if (!supplier.isActive) {
-    throw new AppError(409, 'SUPPLIER_ARCHIVED', 'This supplier is archived. Restore it before ordering.');
+    throw new AppError(
+      409,
+      'SUPPLIER_ARCHIVED',
+      'This supplier is archived. Restore it before ordering.',
+    );
   }
 }
 
@@ -118,7 +128,11 @@ async function assertProducts(tx: Prisma.TransactionClient, storeId: string, pro
   }
   const archived = found.find((p) => !p.isActive);
   if (archived) {
-    throw new AppError(409, 'PRODUCT_ARCHIVED', `“${archived.name}” is archived. Restore it before ordering.`);
+    throw new AppError(
+      409,
+      'PRODUCT_ARCHIVED',
+      `“${archived.name}” is archived. Restore it before ordering.`,
+    );
   }
 }
 
@@ -157,10 +171,18 @@ export function getPurchase(storeId: string, id: string) {
   return loadDetail(prisma, storeId, id);
 }
 
-export async function createPurchase(storeId: string, actorUserId: string, input: CreatePurchaseInput) {
+export async function createPurchase(
+  storeId: string,
+  actorUserId: string,
+  input: CreatePurchaseInput,
+) {
   return prisma.$transaction(async (tx) => {
     await assertSupplier(tx, storeId, input.supplierId);
-    await assertProducts(tx, storeId, input.items.map((i) => i.productId));
+    await assertProducts(
+      tx,
+      storeId,
+      input.items.map((i) => i.productId),
+    );
 
     // The UPDATE locks the counter row, so concurrent creates get distinct numbers.
     // If anything below fails, the whole transaction (and the increment) rolls back.
@@ -201,9 +223,16 @@ export async function updatePurchase(storeId: string, id: string, input: UpdateP
       data: { updatedAt: new Date() },
     });
     if (guard.count === 0) {
-      const current = await tx.purchaseOrder.findFirst({ where: { id, storeId }, select: { id: true } });
+      const current = await tx.purchaseOrder.findFirst({
+        where: { id, storeId },
+        select: { id: true },
+      });
       if (!current) throw notFound();
-      throw new AppError(409, 'NOT_EDITABLE', 'Only draft orders can be edited. Cancel it and create a new one.');
+      throw new AppError(
+        409,
+        'NOT_EDITABLE',
+        'Only draft orders can be edited. Cancel it and create a new one.',
+      );
     }
 
     const data: Prisma.PurchaseOrderUncheckedUpdateInput = {};
@@ -214,7 +243,11 @@ export async function updatePurchase(storeId: string, id: string, input: UpdateP
     if (input.notes !== undefined) data.notes = input.notes;
     if (input.expectedDate !== undefined) data.expectedDate = toDate(input.expectedDate);
     if (input.items) {
-      await assertProducts(tx, storeId, input.items.map((i) => i.productId));
+      await assertProducts(
+        tx,
+        storeId,
+        input.items.map((i) => i.productId),
+      );
       await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
       await tx.purchaseOrderItem.createMany({
         data: input.items.map((i) => ({

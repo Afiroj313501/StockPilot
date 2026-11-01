@@ -132,3 +132,70 @@ export interface LowStockResponse {
 export type UpdateSettingsPayload = Partial<
   Omit<StoreSettings, 'taxRatePercent' | 'onboardingCompletedAt' | 'updatedAt'>
 > & { taxRatePercent?: number; completeOnboarding?: true };
+
+export type PurchaseStatus =
+  'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseSummary {
+  id: string;
+  number: number;
+  reference: string;
+  status: PurchaseStatus;
+  supplierId: string;
+  supplierName: string;
+  itemCount: number;
+  total: string;
+  expectedDate: string | null;
+  createdAt: string;
+}
+
+export interface PurchaseItem {
+  productId: string;
+  productName: string;
+  productSku: string;
+  quantityOrdered: number;
+  quantityReceived: number;
+  quantityRemaining: number;
+  unitCost: string;
+  lineTotal: string;
+}
+
+export interface PurchaseReceipt {
+  id: string;
+  receivedAt: string;
+  receivedByName: string;
+  note: string | null;
+  items: {
+    productId: string;
+    productName: string;
+    productSku: string;
+    quantity: number;
+    unitCost: string;
+    lineTotal: string;
+  }[];
+}
+
+export interface PurchaseDetail extends PurchaseSummary {
+  notes: string | null;
+  createdByName: string;
+  submittedAt: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  items: PurchaseItem[];
+  receipts: PurchaseReceipt[];
+}
+
+export interface PurchasePayload {
+  supplierId: string;
+  notes: string | null;
+  expectedDate: string | null;
+  items: { productId: string; quantityOrdered: number; unitCost: number }[];
+}
+
+export interface ReceivePayload {
+  idempotencyKey: string;
+  note: string | null;
+  items: { productId: string; quantity: number }[];
+}

@@ -70,3 +70,23 @@
 - Line quantities and costs are validated server-side. Totals use Decimal
   arithmetic and are returned as strings; receiving fields remain zero until
   the receiving chunk.
+
+## Receiving stock and cost (chunk 12)
+
+- `POST /purchases/:id/receive` (manager+) on an APPROVED or PARTIALLY_RECEIVED order. Body:
+  `{ idempotencyKey, note?, items: [{ productId, quantity }] }`.
+- One transaction: lock the order row, then the products in id order; write `PurchaseReceipt`,
+  `PurchaseReceiptItem`, increment `quantityReceived`, update `Product.stockQuantity` and
+  `averageCost`, write a `RECEIPT` `StockMovement` (referenceType PURCHASE_RECEIPT), then set the
+  order to RECEIVED (all lines complete) or PARTIALLY_RECEIVED.
+- Only the received quantity changes stock. A line can never exceed ordered minus received (409
+  `OVER_RECEIPT`). A repeated `idempotencyKey` returns the original result (HTTP 200,
+  `Idempotent-Replayed: true`); the same key on another order is 409.
+- Cost method: moving weighted average. `new = (onHand * avg + received * unitCost) / (onHand + received)`,
+  rounded half up to 4 decimals. With `onHand <= 0` the new average is the receipt cost. `avg` starts
+  as the product's `costPrice` when no average exists. `costPrice` itself is never changed by receiving.
+  Reports (Phase 9) use `averageCost`, falling back to `costPrice`.
+- Receipts snapshot the order line's unit cost. Orders that received stock cannot be cancelled.
+- Web: `/purchases`, `/purchases/new`, `/purchases/:id`, `/purchases/:id/edit` (manager+).
+- Limits: no per-delivery cost override, no "close short" action, no printing, `averageCost` not
+  shown in the UI yet.

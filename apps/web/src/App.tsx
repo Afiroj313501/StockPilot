@@ -11,6 +11,9 @@ import { ProductFormPage } from './pages/ProductFormPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { SuppliersPage } from './pages/SuppliersPage';
+import { PurchaseDetailPage } from './pages/PurchaseDetailPage';
+import { PurchaseFormPage } from './pages/PurchaseFormPage';
+import { PurchasesPage } from './pages/PurchasesPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -32,6 +35,10 @@ export function App() {
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/purchases" element={<PurchasesPage />} />
+              <Route path="/purchases/new" element={<PurchaseFormPage />} />
+              <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
+              <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
             </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />

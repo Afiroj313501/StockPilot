@@ -58,3 +58,11 @@ Reporting procedure and known limitations are added in Phase 13.
 - Row locking and idempotency keys prevent overselling and double-applied retries.
 - A database trigger does not yet block direct SQL edits to `stock_movements`;
   `GET /inventory/integrity` detects drift between the ledger and product quantities.
+
+## Receiving (chunk 12)
+
+- Receiving requires MANAGER or OWNER and a verified store context; the order lookup is scoped by
+  storeId (another store's order is 404). Request bodies are strict.
+- Row locking (order, then products in id order) and idempotency keys prevent double-applied or
+  over-received stock (covered by concurrency tests, including receive versus cancel).
+- Stock changes from receiving always go through the ledger, so `GET /inventory/integrity` still reconciles.

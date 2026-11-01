@@ -2,6 +2,7 @@ import {
   Boxes,
   ClipboardList,
   LayoutDashboard,
+  ShoppingCart,
   Settings,
   Tags,
   Truck,
@@ -25,5 +26,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/categories', label: 'Categories', icon: Tags, minRole: 'MANAGER' },
   { to: '/inventory', label: 'Inventory', icon: ClipboardList, minRole: 'MANAGER' },
   { to: '/suppliers', label: 'Suppliers', icon: Truck, minRole: 'MANAGER' },
+  { to: '/purchases', label: 'Purchases', icon: ShoppingCart, minRole: 'MANAGER' },
   { to: '/settings', label: 'Settings', icon: Settings, minRole: 'OWNER' },
 ];
