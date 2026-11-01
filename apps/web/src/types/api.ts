@@ -47,11 +47,14 @@ export interface Category {
 export interface Supplier {
   id: string;
   name: string;
+  contactName: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
+  leadTimeDays: number | null;
   isActive: boolean;
+  orderCount: number;
   createdAt: string;
   updatedAt: string;
 }

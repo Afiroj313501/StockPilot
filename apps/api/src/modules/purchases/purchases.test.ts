@@ -68,19 +68,17 @@ describe('suppliers', () => {
     expect(
       (
         await request(app)
-          .post(`/api/v1/suppliers/${created.body.id}/archive`)
+          .patch(`/api/v1/suppliers/${created.body.id}`)
           .set('Cookie', managerCookie)
+          .send({ isActive: false })
       ).status,
     ).toBe(200);
     expect(
       (await request(app).get('/api/v1/suppliers').set('Cookie', managerCookie)).body.items,
     ).toHaveLength(0);
     expect(
-      (
-        await request(app)
-          .get('/api/v1/suppliers?includeArchived=true')
-          .set('Cookie', managerCookie)
-      ).body.items,
+      (await request(app).get('/api/v1/suppliers?status=all').set('Cookie', managerCookie)).body
+        .items,
     ).toHaveLength(1);
   });
   it('updates supplier contact details', async () => {
@@ -127,7 +125,10 @@ describe('purchase orders', () => {
     const { managerCookie } = await setup('po-archived');
     const s = await supplier(managerCookie);
     const p = await product(managerCookie);
-    await request(app).post(`/api/v1/suppliers/${s.body.id}/archive`).set('Cookie', managerCookie);
+    await request(app)
+      .patch(`/api/v1/suppliers/${s.body.id}`)
+      .set('Cookie', managerCookie)
+      .send({ isActive: false });
     expect((await order(managerCookie, s.body.id, p.body.id)).status).toBe(409);
   });
   it('edits draft line items', async () => {

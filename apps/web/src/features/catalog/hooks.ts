@@ -80,11 +80,10 @@ export function useDeleteCategory() {
   });
 }
 
-export function useSuppliers(includeArchived = false) {
+export function useSuppliers(status: 'active' | 'archived' | 'all' = 'all') {
   return useQuery({
-    queryKey: ['suppliers', includeArchived],
-    queryFn: async () =>
-      (await api<{ items: Supplier[] }>(`/suppliers?includeArchived=${includeArchived}`)).items,
+    queryKey: ['suppliers', status],
+    queryFn: () => api<Paginated<Supplier>>(`/suppliers?status=${status}`),
     retry: false,
   });
 }
@@ -101,7 +100,8 @@ export function useSaveSupplier() {
 export function useArchiveSupplier() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api<Supplier>(`/suppliers/${id}/archive`, { method: 'POST' }),
+    mutationFn: (id: string) =>
+      api<Supplier>(`/suppliers/${id}`, { method: 'PATCH', body: { isActive: false } }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['suppliers'] }),
   });
 }

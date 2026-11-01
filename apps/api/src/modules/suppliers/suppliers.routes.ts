@@ -6,50 +6,52 @@ import { requireAuth } from '../auth/auth.middleware';
 import { requireRole } from '../auth/rbac';
 import { getStore, requireStore } from '../auth/store.middleware';
 import {
-  supplierSchema,
-  supplierUpdateSchema,
-  type SupplierInput,
-  type SupplierUpdateInput,
+  createSupplierSchema,
+  listSuppliersQuery,
+  updateSupplierSchema,
+  type CreateSupplierInput,
+  type UpdateSupplierInput,
 } from './suppliers.schemas';
-import {
-  archiveSupplier,
-  createSupplier,
-  listSuppliers,
-  updateSupplier,
-} from './suppliers.service';
+import { createSupplier, getSupplier, listSuppliers, updateSupplier } from './suppliers.service';
 
 export const suppliersRouter = Router();
+
 suppliersRouter.use(requireAuth, requireStore, requireRole('MANAGER'));
+
 suppliersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const includeArchived = req.query.includeArchived === 'true';
-    res.json({ items: await listSuppliers(getStore(res).storeId, includeArchived) });
+    res.json(await listSuppliers(getStore(res).storeId, listSuppliersQuery.parse(req.query)));
   }),
 );
+
+suppliersRouter.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    res.json(await getSupplier(getStore(res).storeId, uuidParam.parse(req.params.id)));
+  }),
+);
+
 suppliersRouter.post(
   '/',
-  validateBody(supplierSchema),
+  validateBody(createSupplierSchema),
   asyncHandler(async (req, res) => {
-    res.status(201).json(await createSupplier(getStore(res).storeId, req.body as SupplierInput));
+    res
+      .status(201)
+      .json(await createSupplier(getStore(res).storeId, req.body as CreateSupplierInput));
   }),
 );
+
 suppliersRouter.patch(
   '/:id',
-  validateBody(supplierUpdateSchema),
+  validateBody(updateSupplierSchema),
   asyncHandler(async (req, res) => {
     res.json(
       await updateSupplier(
         getStore(res).storeId,
         uuidParam.parse(req.params.id),
-        req.body as SupplierUpdateInput,
+        req.body as UpdateSupplierInput,
       ),
     );
-  }),
-);
-suppliersRouter.post(
-  '/:id/archive',
-  asyncHandler(async (req, res) => {
-    res.json(await archiveSupplier(getStore(res).storeId, uuidParam.parse(req.params.id)));
   }),
 );

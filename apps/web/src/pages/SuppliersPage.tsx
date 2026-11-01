@@ -5,7 +5,7 @@ import { TextField } from '../components/ui/TextField';
 import { useArchiveSupplier, useSaveSupplier, useSuppliers } from '../features/catalog/hooks';
 
 export function SuppliersPage() {
-  const suppliers = useSuppliers(true);
+  const suppliers = useSuppliers('all');
   const save = useSaveSupplier();
   const archive = useArchiveSupplier();
   const [editing, setEditing] = useState<string>();
@@ -62,7 +62,7 @@ export function SuppliersPage() {
       </form>
       <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         <ul className="divide-y">
-          {suppliers.data?.map((supplier) => (
+          {suppliers.data?.items.map((supplier) => (
             <li key={supplier.id} className="flex items-center justify-between px-4 py-3">
               <span>
                 <span className="font-medium">{supplier.name}</span>
