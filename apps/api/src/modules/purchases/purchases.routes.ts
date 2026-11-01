@@ -5,6 +5,8 @@ import { uuidParam } from '../../utils/params';
 import { getAuth, requireAuth } from '../auth/auth.middleware';
 import { requireRole } from '../auth/rbac';
 import { getStore, requireStore } from '../auth/store.middleware';
+import { receivePurchaseSchema, type ReceivePurchaseInput } from './receiving.schemas';
+import { receivePurchase } from './receiving.service';
 import {
   cancelPurchaseSchema,
   createPurchaseSchema,

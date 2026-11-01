@@ -2,36 +2,50 @@ import { Prisma, type PurchaseStatus } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../utils/httpError';
 import { formatMoney, toDecimal } from '../../utils/money';
-import type {
-  CreatePurchaseInput,
-  ListPurchasesQuery,
-  UpdatePurchaseInput,
-} from './purchases.schemas';
+import type { CreatePurchaseInput, ListPurchasesQuery, UpdatePurchaseInput } from './purchases.schemas';
 
-const orderInclude = {
+const listInclude = {
   supplier: { select: { id: true, name: true } },
-  createdBy: { select: { name: true } },
-  approvedBy: { select: { name: true } },
   items: {
     include: { product: { select: { name: true, sku: true } } },
     orderBy: { product: { name: 'asc' } },
   },
 } satisfies Prisma.PurchaseOrderInclude;
-type OrderRow = Prisma.PurchaseOrderGetPayload<{ include: typeof orderInclude }>;
 
-const reference = (n: number) => `PO-${String(n).padStart(4, '0')}`;
+export const detailInclude = {
+  ...listInclude,
+  createdBy: { select: { name: true } },
+  approvedBy: { select: { name: true } },
+  receipts: {
+    orderBy: { createdAt: 'asc' },
+    include: {
+      receivedBy: { select: { name: true } },
+      items: {
+        include: { product: { select: { name: true, sku: true } } },
+        orderBy: { product: { name: 'asc' } },
+      },
+    },
+  },
+} satisfies Prisma.PurchaseOrderInclude;
+
+type ListRow = Prisma.PurchaseOrderGetPayload<{ include: typeof listInclude }>;
+type DetailRow = Prisma.PurchaseOrderGetPayload<{ include: typeof detailInclude }>;
+type Db = Pick<Prisma.TransactionClient, 'purchaseOrder'>;
+
+export const reference = (n: number) => `PO-${String(n).padStart(4, '0')}`;
+export const statusLabel = (s: PurchaseStatus) => s.toLowerCase().replace('_', ' ');
+export const notFound = () => new AppError(404, 'NOT_FOUND', 'Purchase order not found');
 const dateOnly = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const toDate = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00.000Z`) : null);
-const notFound = () => new AppError(404, 'NOT_FOUND', 'Purchase order not found');
 
-function orderTotal(items: { quantityOrdered: number; unitCost: Prisma.Decimal }[]) {
+function orderTotal(items: { quantityOrdered: number; unitCost: Prisma.Decimal }[]): Prisma.Decimal {
   return items.reduce(
     (sum, i) => sum.plus(i.unitCost.times(i.quantityOrdered)),
     new Prisma.Decimal(0),
   );
 }
 
-function toSummary(o: OrderRow) {
+function toSummary(o: ListRow) {
   return {
     id: o.id,
     number: o.number,
@@ -46,7 +60,7 @@ function toSummary(o: OrderRow) {
   };
 }
 
-function toDetail(o: OrderRow) {
+function toDetail(o: DetailRow) {
   return {
     ...toSummary(o),
     notes: o.notes,
@@ -66,6 +80,20 @@ function toDetail(o: OrderRow) {
       unitCost: formatMoney(i.unitCost),
       lineTotal: formatMoney(i.unitCost.times(i.quantityOrdered)),
     })),
+    receipts: o.receipts.map((r) => ({
+      id: r.id,
+      receivedAt: r.createdAt.toISOString(),
+      receivedByName: r.receivedBy.name,
+      note: r.note,
+      items: r.items.map((i) => ({
+        productId: i.productId,
+        productName: i.product.name,
+        productSku: i.product.sku,
+        quantity: i.quantity,
+        unitCost: formatMoney(i.unitCost),
+        lineTotal: formatMoney(i.unitCost.times(i.quantity)),
+      })),
+    })),
   };
 }
 
@@ -75,12 +103,9 @@ async function assertSupplier(tx: Prisma.TransactionClient, storeId: string, sup
     select: { isActive: true },
   });
   if (!supplier) throw new AppError(400, 'INVALID_SUPPLIER', 'Supplier not found in this store');
-  if (!supplier.isActive)
-    throw new AppError(
-      409,
-      'SUPPLIER_ARCHIVED',
-      'This supplier is archived. Restore it before ordering.',
-    );
+  if (!supplier.isActive) {
+    throw new AppError(409, 'SUPPLIER_ARCHIVED', 'This supplier is archived. Restore it before ordering.');
+  }
 }
 
 async function assertProducts(tx: Prisma.TransactionClient, storeId: string, productIds: string[]) {
@@ -88,31 +113,31 @@ async function assertProducts(tx: Prisma.TransactionClient, storeId: string, pro
     where: { storeId, id: { in: productIds } },
     select: { id: true, isActive: true, name: true },
   });
-  if (found.length !== productIds.length)
+  if (found.length !== productIds.length) {
     throw new AppError(400, 'INVALID_PRODUCT', 'One or more products were not found in this store');
+  }
   const archived = found.find((p) => !p.isActive);
-  if (archived)
-    throw new AppError(
-      409,
-      'PRODUCT_ARCHIVED',
-      `"${archived.name}" is archived. Restore it before ordering.`,
-    );
+  if (archived) {
+    throw new AppError(409, 'PRODUCT_ARCHIVED', `“${archived.name}” is archived. Restore it before ordering.`);
+  }
 }
 
 export async function listPurchases(storeId: string, q: ListPurchasesQuery) {
   const where: Prisma.PurchaseOrderWhereInput = { storeId };
   if (q.status) where.status = q.status;
   if (q.supplierId) where.supplierId = q.supplierId;
+
   const [total, rows] = await prisma.$transaction([
     prisma.purchaseOrder.count({ where }),
     prisma.purchaseOrder.findMany({
       where,
-      include: orderInclude,
+      include: listInclude,
       orderBy: [{ number: 'desc' }],
       skip: (q.page - 1) * q.pageSize,
       take: q.pageSize,
     }),
   ]);
+
   return {
     items: rows.map(toSummary),
     page: q.page,
@@ -122,32 +147,29 @@ export async function listPurchases(storeId: string, q: ListPurchasesQuery) {
   };
 }
 
-export async function getPurchase(storeId: string, id: string) {
-  const row = await prisma.purchaseOrder.findFirst({
-    where: { id, storeId },
-    include: orderInclude,
-  });
+export async function loadDetail(db: Db, storeId: string, id: string) {
+  const row = await db.purchaseOrder.findFirst({ where: { id, storeId }, include: detailInclude });
   if (!row) throw notFound();
   return toDetail(row);
 }
 
-export async function createPurchase(
-  storeId: string,
-  actorUserId: string,
-  input: CreatePurchaseInput,
-) {
+export function getPurchase(storeId: string, id: string) {
+  return loadDetail(prisma, storeId, id);
+}
+
+export async function createPurchase(storeId: string, actorUserId: string, input: CreatePurchaseInput) {
   return prisma.$transaction(async (tx) => {
     await assertSupplier(tx, storeId, input.supplierId);
-    await assertProducts(
-      tx,
-      storeId,
-      input.items.map((i) => i.productId),
-    );
+    await assertProducts(tx, storeId, input.items.map((i) => i.productId));
+
+    // The UPDATE locks the counter row, so concurrent creates get distinct numbers.
+    // If anything below fails, the whole transaction (and the increment) rolls back.
     const counter = await tx.store.update({
       where: { id: storeId },
       data: { nextPurchaseNumber: { increment: 1 } },
       select: { nextPurchaseNumber: true },
     });
+
     const order = await tx.purchaseOrder.create({
       data: {
         storeId,
@@ -164,7 +186,7 @@ export async function createPurchase(
           })),
         },
       },
-      include: orderInclude,
+      include: detailInclude,
     });
     return toDetail(order);
   });
@@ -172,22 +194,18 @@ export async function createPurchase(
 
 export async function updatePurchase(storeId: string, id: string, input: UpdatePurchaseInput) {
   return prisma.$transaction(async (tx) => {
+    // Conditional update: succeeds only for a DRAFT of this store, and holds the
+    // row lock for the rest of the transaction, so a parallel "submit" must wait.
     const guard = await tx.purchaseOrder.updateMany({
       where: { id, storeId, status: 'DRAFT' },
       data: { updatedAt: new Date() },
     });
     if (guard.count === 0) {
-      const current = await tx.purchaseOrder.findFirst({
-        where: { id, storeId },
-        select: { id: true },
-      });
+      const current = await tx.purchaseOrder.findFirst({ where: { id, storeId }, select: { id: true } });
       if (!current) throw notFound();
-      throw new AppError(
-        409,
-        'NOT_EDITABLE',
-        'Only draft orders can be edited. Cancel it and create a new one.',
-      );
+      throw new AppError(409, 'NOT_EDITABLE', 'Only draft orders can be edited. Cancel it and create a new one.');
     }
+
     const data: Prisma.PurchaseOrderUncheckedUpdateInput = {};
     if (input.supplierId !== undefined) {
       await assertSupplier(tx, storeId, input.supplierId);
@@ -196,11 +214,7 @@ export async function updatePurchase(storeId: string, id: string, input: UpdateP
     if (input.notes !== undefined) data.notes = input.notes;
     if (input.expectedDate !== undefined) data.expectedDate = toDate(input.expectedDate);
     if (input.items) {
-      await assertProducts(
-        tx,
-        storeId,
-        input.items.map((i) => i.productId),
-      );
+      await assertProducts(tx, storeId, input.items.map((i) => i.productId));
       await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
       await tx.purchaseOrderItem.createMany({
         data: input.items.map((i) => ({
@@ -211,11 +225,14 @@ export async function updatePurchase(storeId: string, id: string, input: UpdateP
         })),
       });
     }
-    const updated = await tx.purchaseOrder.update({ where: { id }, data, include: orderInclude });
+
+    const updated = await tx.purchaseOrder.update({ where: { id }, data, include: detailInclude });
     return toDetail(updated);
   });
 }
 
+// One atomic conditional UPDATE: the change happens only if the order is still in an
+// allowed state, so parallel or repeated requests cannot apply a transition twice.
 async function transition(
   storeId: string,
   id: string,
@@ -232,29 +249,32 @@ async function transition(
       select: { status: true },
     });
     if (!current) throw notFound();
-    const label = current.status.toLowerCase().replace('_', ' ');
     throw new AppError(
       409,
       'INVALID_STATE',
-      `This order is ${label}, so this action is not allowed.`,
+      `This order is ${statusLabel(current.status)}, so this action is not allowed.`,
     );
   }
   return getPurchase(storeId, id);
 }
 
-export const submitPurchase = (storeId: string, id: string) =>
-  transition(storeId, id, ['DRAFT'], { status: 'SUBMITTED', submittedAt: new Date() });
+export function submitPurchase(storeId: string, id: string) {
+  return transition(storeId, id, ['DRAFT'], { status: 'SUBMITTED', submittedAt: new Date() });
+}
 
-export const approvePurchase = (storeId: string, id: string, actorUserId: string) =>
-  transition(storeId, id, ['SUBMITTED'], {
+export function approvePurchase(storeId: string, id: string, actorUserId: string) {
+  return transition(storeId, id, ['SUBMITTED'], {
     status: 'APPROVED',
     approvedById: actorUserId,
     approvedAt: new Date(),
   });
+}
 
-export const cancelPurchase = (storeId: string, id: string, reason: string | null | undefined) =>
-  transition(storeId, id, ['DRAFT', 'SUBMITTED', 'APPROVED'], {
+// Orders that have received stock (partially received or received) cannot be cancelled here.
+export function cancelPurchase(storeId: string, id: string, reason: string | null | undefined) {
+  return transition(storeId, id, ['DRAFT', 'SUBMITTED', 'APPROVED'], {
     status: 'CANCELLED',
     cancelledAt: new Date(),
     cancelReason: reason ?? null,
   });
+}
