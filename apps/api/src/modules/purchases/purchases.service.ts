@@ -1,185 +1,260 @@
 import { Prisma, type PurchaseStatus } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../utils/httpError';
-import { prismaCode } from '../../utils/prismaErrors';
-import type { PurchaseOrderInput } from './purchases.schemas';
+import { formatMoney, toDecimal } from '../../utils/money';
+import type {
+  CreatePurchaseInput,
+  ListPurchasesQuery,
+  UpdatePurchaseInput,
+} from './purchases.schemas';
 
-const include = {
-  supplier: { select: { id: true, name: true, phone: true, email: true } },
-  items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+const orderInclude = {
+  supplier: { select: { id: true, name: true } },
+  createdBy: { select: { name: true } },
+  approvedBy: { select: { name: true } },
+  items: {
+    include: { product: { select: { name: true, sku: true } } },
+    orderBy: { product: { name: 'asc' } },
+  },
 } satisfies Prisma.PurchaseOrderInclude;
-type OrderRow = Prisma.PurchaseOrderGetPayload<{ include: typeof include }>;
+type OrderRow = Prisma.PurchaseOrderGetPayload<{ include: typeof orderInclude }>;
 
-function dto(order: OrderRow) {
-  const total = order.items.reduce(
-    (sum, line) => sum.plus(line.unitCost.times(line.quantityOrdered)),
+const reference = (n: number) => `PO-${String(n).padStart(4, '0')}`;
+const dateOnly = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+const toDate = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00.000Z`) : null);
+const notFound = () => new AppError(404, 'NOT_FOUND', 'Purchase order not found');
+
+function orderTotal(items: { quantityOrdered: number; unitCost: Prisma.Decimal }[]) {
+  return items.reduce(
+    (sum, i) => sum.plus(i.unitCost.times(i.quantityOrdered)),
     new Prisma.Decimal(0),
   );
+}
+
+function toSummary(o: OrderRow) {
   return {
-    id: order.id,
-    number: order.number,
-    supplier: order.supplier,
-    status: order.status,
-    notes: order.notes,
-    createdById: order.createdById,
-    approvedById: order.approvedById,
-    createdAt: order.createdAt.toISOString(),
-    submittedAt: order.submittedAt?.toISOString() ?? null,
-    approvedAt: order.approvedAt?.toISOString() ?? null,
-    total: total.toFixed(2),
-    items: order.items.map((line) => ({
-      id: line.id,
-      productId: line.productId,
-      productName: line.product.name,
-      productSku: line.product.sku,
-      quantityOrdered: line.quantityOrdered,
-      quantityReceived: line.quantityReceived,
-      unitCost: line.unitCost.toFixed(2),
-      lineTotal: line.unitCost.times(line.quantityOrdered).toFixed(2),
+    id: o.id,
+    number: o.number,
+    reference: reference(o.number),
+    status: o.status,
+    supplierId: o.supplier.id,
+    supplierName: o.supplier.name,
+    itemCount: o.items.length,
+    total: formatMoney(orderTotal(o.items)),
+    expectedDate: dateOnly(o.expectedDate),
+    createdAt: o.createdAt.toISOString(),
+  };
+}
+
+function toDetail(o: OrderRow) {
+  return {
+    ...toSummary(o),
+    notes: o.notes,
+    createdByName: o.createdBy.name,
+    submittedAt: o.submittedAt?.toISOString() ?? null,
+    approvedByName: o.approvedBy?.name ?? null,
+    approvedAt: o.approvedAt?.toISOString() ?? null,
+    cancelledAt: o.cancelledAt?.toISOString() ?? null,
+    cancelReason: o.cancelReason,
+    items: o.items.map((i) => ({
+      productId: i.productId,
+      productName: i.product.name,
+      productSku: i.product.sku,
+      quantityOrdered: i.quantityOrdered,
+      quantityReceived: i.quantityReceived,
+      quantityRemaining: i.quantityOrdered - i.quantityReceived,
+      unitCost: formatMoney(i.unitCost),
+      lineTotal: formatMoney(i.unitCost.times(i.quantityOrdered)),
     })),
   };
 }
 
-async function validateReferences(
-  tx: Prisma.TransactionClient,
-  storeId: string,
-  input: PurchaseOrderInput,
-) {
-  const supplier = await tx.supplier.findFirst({ where: { id: input.supplierId, storeId } });
-  if (!supplier) throw new AppError(404, 'SUPPLIER_NOT_FOUND', 'Supplier not found');
-  if (!supplier.isActive)
-    throw new AppError(409, 'SUPPLIER_ARCHIVED', 'Archived suppliers cannot receive new orders');
-  const products = await tx.product.findMany({
-    where: { storeId, id: { in: input.lines.map((line) => line.productId) }, isActive: true },
-    select: { id: true },
+async function assertSupplier(tx: Prisma.TransactionClient, storeId: string, supplierId: string) {
+  const supplier = await tx.supplier.findFirst({
+    where: { id: supplierId, storeId },
+    select: { isActive: true },
   });
-  if (products.length !== input.lines.length)
+  if (!supplier) throw new AppError(400, 'INVALID_SUPPLIER', 'Supplier not found in this store');
+  if (!supplier.isActive)
     throw new AppError(
-      400,
-      'INVALID_PRODUCT',
-      'Every line must reference an active product in this store',
+      409,
+      'SUPPLIER_ARCHIVED',
+      'This supplier is archived. Restore it before ordering.',
     );
 }
 
-async function nextNumber(tx: Prisma.TransactionClient, storeId: string) {
-  const rows = await tx.$queryRaw<{ nextPurchaseNumber: number }[]>`
-    UPDATE stores
-    SET "nextPurchaseNumber" = "nextPurchaseNumber" + 1
-    WHERE id = ${storeId}
-    RETURNING "nextPurchaseNumber" - 1 AS "nextPurchaseNumber"`;
-  if (rows.length === 0) throw new AppError(404, 'NOT_FOUND', 'Store not found');
-  return rows[0]!.nextPurchaseNumber;
-}
-
-export async function listPurchaseOrders(storeId: string) {
-  const rows = await prisma.purchaseOrder.findMany({
-    where: { storeId },
-    include,
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+async function assertProducts(tx: Prisma.TransactionClient, storeId: string, productIds: string[]) {
+  const found = await tx.product.findMany({
+    where: { storeId, id: { in: productIds } },
+    select: { id: true, isActive: true, name: true },
   });
-  return rows.map(dto);
+  if (found.length !== productIds.length)
+    throw new AppError(400, 'INVALID_PRODUCT', 'One or more products were not found in this store');
+  const archived = found.find((p) => !p.isActive);
+  if (archived)
+    throw new AppError(
+      409,
+      'PRODUCT_ARCHIVED',
+      `"${archived.name}" is archived. Restore it before ordering.`,
+    );
 }
 
-export async function getPurchaseOrder(storeId: string, id: string) {
-  const row = await prisma.purchaseOrder.findFirst({ where: { id, storeId }, include });
-  if (!row) throw new AppError(404, 'NOT_FOUND', 'Purchase order not found');
-  return dto(row);
+export async function listPurchases(storeId: string, q: ListPurchasesQuery) {
+  const where: Prisma.PurchaseOrderWhereInput = { storeId };
+  if (q.status) where.status = q.status;
+  if (q.supplierId) where.supplierId = q.supplierId;
+  const [total, rows] = await prisma.$transaction([
+    prisma.purchaseOrder.count({ where }),
+    prisma.purchaseOrder.findMany({
+      where,
+      include: orderInclude,
+      orderBy: [{ number: 'desc' }],
+      skip: (q.page - 1) * q.pageSize,
+      take: q.pageSize,
+    }),
+  ]);
+  return {
+    items: rows.map(toSummary),
+    page: q.page,
+    pageSize: q.pageSize,
+    total,
+    totalPages: Math.ceil(total / q.pageSize),
+  };
 }
 
-export async function createPurchaseOrder(
+export async function getPurchase(storeId: string, id: string) {
+  const row = await prisma.purchaseOrder.findFirst({
+    where: { id, storeId },
+    include: orderInclude,
+  });
+  if (!row) throw notFound();
+  return toDetail(row);
+}
+
+export async function createPurchase(
   storeId: string,
   actorUserId: string,
-  input: PurchaseOrderInput,
+  input: CreatePurchaseInput,
 ) {
-  const row = await prisma.$transaction(async (tx) => {
-    await validateReferences(tx, storeId, input);
-    const number = await nextNumber(tx, storeId);
-    return tx.purchaseOrder.create({
+  return prisma.$transaction(async (tx) => {
+    await assertSupplier(tx, storeId, input.supplierId);
+    await assertProducts(
+      tx,
+      storeId,
+      input.items.map((i) => i.productId),
+    );
+    const counter = await tx.store.update({
+      where: { id: storeId },
+      data: { nextPurchaseNumber: { increment: 1 } },
+      select: { nextPurchaseNumber: true },
+    });
+    const order = await tx.purchaseOrder.create({
       data: {
         storeId,
         supplierId: input.supplierId,
-        number,
+        number: counter.nextPurchaseNumber - 1,
         notes: input.notes ?? null,
+        expectedDate: toDate(input.expectedDate),
         createdById: actorUserId,
         items: {
-          create: input.lines.map((line) => ({
-            productId: line.productId,
-            quantityOrdered: line.quantityOrdered,
-            unitCost: new Prisma.Decimal(line.unitCost.toFixed(2)),
+          create: input.items.map((i) => ({
+            productId: i.productId,
+            quantityOrdered: i.quantityOrdered,
+            unitCost: toDecimal(i.unitCost),
           })),
         },
       },
-      include,
+      include: orderInclude,
     });
+    return toDetail(order);
   });
-  return dto(row);
 }
 
-export async function updatePurchaseOrder(storeId: string, id: string, input: PurchaseOrderInput) {
-  const row = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM purchase_orders WHERE id = ${id} AND "storeId" = ${storeId} FOR UPDATE`;
-    const order = await tx.purchaseOrder.findFirst({
-      where: { id, storeId },
-      select: { status: true },
+export async function updatePurchase(storeId: string, id: string, input: UpdatePurchaseInput) {
+  return prisma.$transaction(async (tx) => {
+    const guard = await tx.purchaseOrder.updateMany({
+      where: { id, storeId, status: 'DRAFT' },
+      data: { updatedAt: new Date() },
     });
-    if (!order) throw new AppError(404, 'NOT_FOUND', 'Purchase order not found');
-    if (order.status !== 'DRAFT')
-      throw new AppError(409, 'ORDER_NOT_DRAFT', 'Only draft orders can be edited');
-    await validateReferences(tx, storeId, input);
-    await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
-    return tx.purchaseOrder.update({
-      where: { id },
-      data: {
-        supplierId: input.supplierId,
-        notes: input.notes ?? null,
-        items: {
-          create: input.lines.map((line) => ({
-            productId: line.productId,
-            quantityOrdered: line.quantityOrdered,
-            unitCost: new Prisma.Decimal(line.unitCost.toFixed(2)),
-          })),
-        },
-      },
-      include,
-    });
+    if (guard.count === 0) {
+      const current = await tx.purchaseOrder.findFirst({
+        where: { id, storeId },
+        select: { id: true },
+      });
+      if (!current) throw notFound();
+      throw new AppError(
+        409,
+        'NOT_EDITABLE',
+        'Only draft orders can be edited. Cancel it and create a new one.',
+      );
+    }
+    const data: Prisma.PurchaseOrderUncheckedUpdateInput = {};
+    if (input.supplierId !== undefined) {
+      await assertSupplier(tx, storeId, input.supplierId);
+      data.supplierId = input.supplierId;
+    }
+    if (input.notes !== undefined) data.notes = input.notes;
+    if (input.expectedDate !== undefined) data.expectedDate = toDate(input.expectedDate);
+    if (input.items) {
+      await assertProducts(
+        tx,
+        storeId,
+        input.items.map((i) => i.productId),
+      );
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
+      await tx.purchaseOrderItem.createMany({
+        data: input.items.map((i) => ({
+          purchaseOrderId: id,
+          productId: i.productId,
+          quantityOrdered: i.quantityOrdered,
+          unitCost: toDecimal(i.unitCost),
+        })),
+      });
+    }
+    const updated = await tx.purchaseOrder.update({ where: { id }, data, include: orderInclude });
+    return toDetail(updated);
   });
-  return dto(row);
 }
 
 async function transition(
   storeId: string,
   id: string,
-  actorUserId: string,
   from: PurchaseStatus[],
-  to: PurchaseStatus,
+  data: Prisma.PurchaseOrderUncheckedUpdateManyInput,
 ) {
-  const data =
-    to === 'SUBMITTED'
-      ? { status: to, submittedAt: new Date() }
-      : to === 'APPROVED'
-        ? { status: to, approvedById: actorUserId, approvedAt: new Date() }
-        : { status: to, cancelledAt: new Date() };
   const result = await prisma.purchaseOrder.updateMany({
     where: { id, storeId, status: { in: from } },
     data,
   });
-  if (result.count === 0)
+  if (result.count === 0) {
+    const current = await prisma.purchaseOrder.findFirst({
+      where: { id, storeId },
+      select: { status: true },
+    });
+    if (!current) throw notFound();
+    const label = current.status.toLowerCase().replace('_', ' ');
     throw new AppError(
       409,
-      'INVALID_ORDER_STATE',
-      'The purchase order changed or cannot make that transition',
+      'INVALID_STATE',
+      `This order is ${label}, so this action is not allowed.`,
     );
-  return getPurchaseOrder(storeId, id);
+  }
+  return getPurchase(storeId, id);
 }
 
-export const submitPurchaseOrder = (storeId: string, id: string, actorUserId: string) =>
-  transition(storeId, id, actorUserId, ['DRAFT'], 'SUBMITTED');
-export const approvePurchaseOrder = (storeId: string, id: string, actorUserId: string) =>
-  transition(storeId, id, actorUserId, ['SUBMITTED'], 'APPROVED');
-export const cancelPurchaseOrder = (storeId: string, id: string, actorUserId: string) =>
-  transition(storeId, id, actorUserId, ['DRAFT', 'SUBMITTED', 'APPROVED'], 'CANCELLED');
+export const submitPurchase = (storeId: string, id: string) =>
+  transition(storeId, id, ['DRAFT'], { status: 'SUBMITTED', submittedAt: new Date() });
 
-export function purchaseOrderError(err: unknown): never {
-  if (prismaCode(err) === 'P2025') throw new AppError(404, 'NOT_FOUND', 'Purchase order not found');
-  throw err;
-}
+export const approvePurchase = (storeId: string, id: string, actorUserId: string) =>
+  transition(storeId, id, ['SUBMITTED'], {
+    status: 'APPROVED',
+    approvedById: actorUserId,
+    approvedAt: new Date(),
+  });
+
+export const cancelPurchase = (storeId: string, id: string, reason: string | null | undefined) =>
+  transition(storeId, id, ['DRAFT', 'SUBMITTED', 'APPROVED'], {
+    status: 'CANCELLED',
+    cancelledAt: new Date(),
+    cancelReason: reason ?? null,
+  });

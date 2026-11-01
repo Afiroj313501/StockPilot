@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import type { Category, Paginated, Product, ProductPayload, Supplier } from '../../types/api';
+import type { Category, Paginated, Product, ProductPayload } from '../../types/api';
 
 export interface ProductFilters {
   search: string;
@@ -77,31 +77,5 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: string) => api<void>(`/categories/${id}`, { method: 'DELETE' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['categories'] }),
-  });
-}
-
-export function useSuppliers(status: 'active' | 'archived' | 'all' = 'all') {
-  return useQuery({
-    queryKey: ['suppliers', status],
-    queryFn: () => api<Paginated<Supplier>>(`/suppliers?status=${status}`),
-    retry: false,
-  });
-}
-export function useSaveSupplier() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id?: string; body: Partial<Supplier> & { name: string } }) =>
-      id
-        ? api<Supplier>(`/suppliers/${id}`, { method: 'PATCH', body })
-        : api<Supplier>('/suppliers', { method: 'POST', body }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['suppliers'] }),
-  });
-}
-export function useArchiveSupplier() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<Supplier>(`/suppliers/${id}`, { method: 'PATCH', body: { isActive: false } }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['suppliers'] }),
   });
 }

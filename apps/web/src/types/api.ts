@@ -59,6 +59,16 @@ export interface Supplier {
   updatedAt: string;
 }
 
+export interface SupplierPayload {
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  leadTimeDays: number | null;
+}
+
 export interface Product {
   id: string;
   name: string;

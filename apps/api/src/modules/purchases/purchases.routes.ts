@@ -5,77 +5,85 @@ import { uuidParam } from '../../utils/params';
 import { getAuth, requireAuth } from '../auth/auth.middleware';
 import { requireRole } from '../auth/rbac';
 import { getStore, requireStore } from '../auth/store.middleware';
-import { purchaseOrderSchema, type PurchaseOrderInput } from './purchases.schemas';
 import {
-  approvePurchaseOrder,
-  cancelPurchaseOrder,
-  createPurchaseOrder,
-  getPurchaseOrder,
-  listPurchaseOrders,
-  submitPurchaseOrder,
-  updatePurchaseOrder,
+  cancelPurchaseSchema,
+  createPurchaseSchema,
+  listPurchasesQuery,
+  updatePurchaseSchema,
+  type CancelPurchaseInput,
+  type CreatePurchaseInput,
+  type UpdatePurchaseInput,
+} from './purchases.schemas';
+import {
+  approvePurchase,
+  cancelPurchase,
+  createPurchase,
+  getPurchase,
+  listPurchases,
+  submitPurchase,
+  updatePurchase,
 } from './purchases.service';
 
 export const purchasesRouter = Router();
 purchasesRouter.use(requireAuth, requireStore, requireRole('MANAGER'));
+
 purchasesRouter.get(
   '/',
-  asyncHandler(async (_req, res) => {
-    res.json({ items: await listPurchaseOrders(getStore(res).storeId) });
+  asyncHandler(async (req, res) => {
+    res.json(await listPurchases(getStore(res).storeId, listPurchasesQuery.parse(req.query)));
   }),
 );
+
 purchasesRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    res.json(await getPurchaseOrder(getStore(res).storeId, uuidParam.parse(req.params.id)));
+    res.json(await getPurchase(getStore(res).storeId, uuidParam.parse(req.params.id)));
   }),
 );
+
 purchasesRouter.post(
   '/',
-  validateBody(purchaseOrderSchema),
+  validateBody(createPurchaseSchema),
   asyncHandler(async (req, res) => {
     res
       .status(201)
       .json(
-        await createPurchaseOrder(
+        await createPurchase(
           getStore(res).storeId,
           getAuth(res).user.id,
-          req.body as PurchaseOrderInput,
+          req.body as CreatePurchaseInput,
         ),
       );
   }),
 );
+
 purchasesRouter.patch(
   '/:id',
-  validateBody(purchaseOrderSchema),
+  validateBody(updatePurchaseSchema),
   asyncHandler(async (req, res) => {
     res.json(
-      await updatePurchaseOrder(
+      await updatePurchase(
         getStore(res).storeId,
         uuidParam.parse(req.params.id),
-        req.body as PurchaseOrderInput,
+        req.body as UpdatePurchaseInput,
       ),
     );
   }),
 );
+
 purchasesRouter.post(
   '/:id/submit',
   asyncHandler(async (req, res) => {
-    res.json(
-      await submitPurchaseOrder(
-        getStore(res).storeId,
-        uuidParam.parse(req.params.id),
-        getAuth(res).user.id,
-      ),
-    );
+    res.json(await submitPurchase(getStore(res).storeId, uuidParam.parse(req.params.id)));
   }),
 );
+
 purchasesRouter.post(
   '/:id/approve',
   requireRole('OWNER'),
   asyncHandler(async (req, res) => {
     res.json(
-      await approvePurchaseOrder(
+      await approvePurchase(
         getStore(res).storeId,
         uuidParam.parse(req.params.id),
         getAuth(res).user.id,
@@ -83,15 +91,12 @@ purchasesRouter.post(
     );
   }),
 );
+
 purchasesRouter.post(
   '/:id/cancel',
+  validateBody(cancelPurchaseSchema),
   asyncHandler(async (req, res) => {
-    res.json(
-      await cancelPurchaseOrder(
-        getStore(res).storeId,
-        uuidParam.parse(req.params.id),
-        getAuth(res).user.id,
-      ),
-    );
+    const { reason } = req.body as CancelPurchaseInput;
+    res.json(await cancelPurchase(getStore(res).storeId, uuidParam.parse(req.params.id), reason));
   }),
 );

@@ -43,7 +43,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/products', productsRouter);
   app.use('/api/v1/inventory', inventoryRouter);
   app.use('/api/v1/suppliers', suppliersRouter);
-  app.use('/api/v1/purchase-orders', purchasesRouter);
+  app.use('/api/v1/purchases', purchasesRouter);
 
   app.use(notFound);
   app.use(errorHandler);
