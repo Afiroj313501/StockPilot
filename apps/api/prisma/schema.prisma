@@ -47,6 +47,7 @@ model User {
   stockMovements StockMovement[]
   createdPurchases  PurchaseOrder[] @relation("PurchaseCreatedBy")
   approvedPurchases PurchaseOrder[] @relation("PurchaseApprovedBy")
+  receivedReceipts PurchaseReceipt[]
 
   @@map("users")
 }
@@ -64,6 +65,7 @@ model Store {
   stockMovements StockMovement[]
   suppliers          Supplier[]
   purchaseOrders     PurchaseOrder[]
+  purchaseReceipts PurchaseReceipt[]
   nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
@@ -158,6 +160,8 @@ model Product {
   category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   movements StockMovement[]
   purchaseItems PurchaseOrderItem[]
+  averageCost  Decimal?             @db.Decimal(12, 4) // moving weighted average; null = use costPrice
+  receiptItems PurchaseReceiptItem[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
@@ -210,6 +214,7 @@ model PurchaseOrder {
   createdBy  User                @relation("PurchaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   approvedBy User?               @relation("PurchaseApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
   items      PurchaseOrderItem[]
+  receipts   PurchaseReceipt[]
 
   @@unique([storeId, number])
   @@index([storeId, status])
@@ -226,6 +231,7 @@ model PurchaseOrderItem {
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  receiptItems  PurchaseReceiptItem[]
 
   @@unique([purchaseOrderId, productId])
   @@index([productId])
@@ -255,4 +261,40 @@ model StockMovement {
   @@index([storeId, productId, createdAt])
   @@index([storeId, createdAt])
   @@map("stock_movements")
+}
+
+model PurchaseReceipt {
+  id              String   @id @default(uuid())
+  storeId         String
+  purchaseOrderId String
+  receivedById    String
+  note            String?
+  idempotencyKey  String
+  createdAt       DateTime @default(now())
+
+  store         Store                 @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  receivedBy    User                  @relation(fields: [receivedById], references: [id], onDelete: Restrict)
+  items         PurchaseReceiptItem[]
+
+  @@unique([storeId, idempotencyKey])
+  @@index([purchaseOrderId])
+  @@map("purchase_receipts")
+}
+
+model PurchaseReceiptItem {
+  id                  String  @id @default(uuid())
+  receiptId           String
+  purchaseOrderItemId String
+  productId           String
+  quantity            Int
+  unitCost            Decimal @db.Decimal(12, 2) // snapshot of the order line's cost
+
+  receipt           PurchaseReceipt   @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+  purchaseOrderItem PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  product           Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([receiptId])
+  @@index([productId])
+  @@map("purchase_receipt_items")
 }
