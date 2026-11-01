@@ -199,3 +199,78 @@ export interface ReceivePayload {
   note: string | null;
   items: { productId: string; quantity: number }[];
 }
+
+
+export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE' | 'OTHER';
+
+export interface SaleLine {
+  productId: string;
+  productName: string;
+  productSku: string;
+  quantity: number;
+  unitPrice: string;
+  lineSubtotal: string;
+  discountShare: string;
+  taxShare: string;
+  lineTotal: string;
+}
+
+export interface SalePreview {
+  currency: string;
+  taxName: string;
+  taxRatePercent: string;
+  taxInclusive: boolean;
+  subtotal: string;
+  discountTotal: string;
+  taxTotal: string;
+  total: string;
+  lines: SaleLine[];
+}
+
+export interface SaleDetail {
+  id: string;
+  number: number;
+  reference: string;
+  status: 'COMPLETED' | 'VOIDED';
+  createdAt: string;
+  cashierName: string;
+  customerName: string | null;
+  currency: string;
+  taxName: string;
+  taxRatePercent: string;
+  taxInclusive: boolean;
+  subtotal: string;
+  discountType: 'PERCENT' | 'AMOUNT' | null;
+  discountValue: string | null;
+  discountTotal: string;
+  taxTotal: string;
+  total: string;
+  items: SaleLine[];
+  payments: { method: PaymentMethod; amount: string; tendered: string; change: string }[];
+}
+
+export interface SaleSummary {
+  id: string;
+  number: number;
+  reference: string;
+  status: 'COMPLETED' | 'VOIDED';
+  createdAt: string;
+  cashierName: string;
+  unitCount: number;
+  total: string;
+  paymentMethod: PaymentMethod | null;
+}
+
+export interface CartDiscount {
+  type: 'PERCENT' | 'AMOUNT';
+  value: number;
+}
+
+export interface CheckoutPayload {
+  idempotencyKey: string;
+  items: { productId: string; quantity: number }[];
+  discount: CartDiscount | null;
+  customerName: string | null;
+  payment: { method: PaymentMethod; amountTendered: number };
+  expectedTotal: number;
+}
