@@ -48,6 +48,7 @@ model User {
   createdPurchases  PurchaseOrder[] @relation("PurchaseCreatedBy")
   approvedPurchases PurchaseOrder[] @relation("PurchaseApprovedBy")
   receivedReceipts PurchaseReceipt[]
+  sales Sale[]
 
   @@map("users")
 }
@@ -66,6 +67,9 @@ model Store {
   suppliers          Supplier[]
   purchaseOrders     PurchaseOrder[]
   purchaseReceipts PurchaseReceipt[]
+  sales          Sale[]
+  payments       Payment[]
+  nextSaleNumber Int       @default(1)
   nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
@@ -162,6 +166,7 @@ model Product {
   purchaseItems PurchaseOrderItem[]
   averageCost  Decimal?             @db.Decimal(12, 4) // moving weighted average; null = use costPrice
   receiptItems PurchaseReceiptItem[]
+  saleItems SaleItem[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
@@ -297,4 +302,93 @@ model PurchaseReceiptItem {
   @@index([receiptId])
   @@index([productId])
   @@map("purchase_receipt_items")
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED // reserved for a later chunk
+}
+
+enum PaymentMethod {
+  CASH
+  CARD // recorded manually; no gateway
+  MOBILE
+  OTHER
+}
+
+enum DiscountType {
+  PERCENT
+  AMOUNT
+}
+
+model Sale {
+  id             String        @id @default(uuid())
+  storeId        String
+  number         Int
+  status         SaleStatus    @default(COMPLETED)
+  cashierId      String
+  customerName   String?
+  // Snapshots of the store settings at the time of sale.
+  currency       String        @db.VarChar(3)
+  taxName        String
+  taxRatePercent Decimal       @db.Decimal(5, 2)
+  taxInclusive   Boolean
+  subtotal       Decimal       @db.Decimal(12, 2)
+  discountType   DiscountType?
+  discountValue  Decimal?      @db.Decimal(12, 2)
+  discountTotal  Decimal       @db.Decimal(12, 2)
+  taxTotal       Decimal       @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  idempotencyKey String
+  createdAt      DateTime      @default(now())
+
+  store    Store      @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  cashier  User       @relation(fields: [cashierId], references: [id], onDelete: Restrict)
+  items    SaleItem[]
+  payments Payment[]
+
+  @@unique([storeId, number])
+  @@unique([storeId, idempotencyKey])
+  @@index([storeId, createdAt])
+  @@index([storeId, cashierId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id            String  @id @default(uuid())
+  saleId        String
+  productId     String
+  productName   String // snapshot
+  productSku    String // snapshot
+  quantity      Int
+  unitPrice     Decimal @db.Decimal(12, 2) // snapshot
+  unitCost      Decimal @db.Decimal(12, 4) // snapshot of averageCost, else costPrice
+  lineSubtotal  Decimal @db.Decimal(12, 2)
+  discountShare Decimal @db.Decimal(12, 2)
+  taxShare      Decimal @db.Decimal(12, 2)
+  lineTotal     Decimal @db.Decimal(12, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  storeId   String
+  saleId    String
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(12, 2) // applied to the sale
+  tendered  Decimal       @db.Decimal(12, 2)
+  change    Decimal       @db.Decimal(12, 2)
+  createdAt DateTime      @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  sale  Sale  @relation(fields: [saleId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@map("payments")
 }
