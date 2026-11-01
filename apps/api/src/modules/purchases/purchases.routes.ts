@@ -102,3 +102,19 @@ purchasesRouter.post(
     res.json(await cancelPurchase(getStore(res).storeId, uuidParam.parse(req.params.id), reason));
   }),
 );
+
+// Managers and owners can receive stock against an approved order.
+purchasesRouter.post(
+  '/:id/receive',
+  validateBody(receivePurchaseSchema),
+  asyncHandler(async (req, res) => {
+    const { order, replayed } = await receivePurchase(
+      getStore(res).storeId,
+      getAuth(res).user.id,
+      uuidParam.parse(req.params.id),
+      req.body as ReceivePurchaseInput,
+    );
+    if (replayed) res.setHeader('Idempotent-Replayed', 'true');
+    res.status(replayed ? 200 : 201).json(order);
+  }),
+);
