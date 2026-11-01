@@ -24,7 +24,7 @@ enum MovementType {
   RECONCILIATION
 }
 
-enum PurchaseOrderStatus {
+enum PurchaseStatus {
   DRAFT
   SUBMITTED
   APPROVED
@@ -45,9 +45,8 @@ model User {
   memberships StoreMembership[]
   sessions    Session[]
   stockMovements StockMovement[]
-  purchaseOrdersCreated PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
-  purchaseOrdersSubmitted PurchaseOrder[] @relation("PurchaseOrderSubmittedBy")
-  purchaseOrdersApproved PurchaseOrder[] @relation("PurchaseOrderApprovedBy")
+  createdPurchases  PurchaseOrder[] @relation("PurchaseCreatedBy")
+  approvedPurchases PurchaseOrder[] @relation("PurchaseApprovedBy")
 
   @@map("users")
 }
@@ -63,9 +62,9 @@ model Store {
   categories   Category[]
   products     Product[]
   stockMovements StockMovement[]
-  suppliers   Supplier[]
-  purchaseOrders PurchaseOrder[]
-  purchaseOrderCounter PurchaseOrderCounter?
+  suppliers          Supplier[]
+  purchaseOrders     PurchaseOrder[]
+  nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
 }
@@ -158,7 +157,7 @@ model Product {
   store    Store     @relation(fields: [storeId], references: [id], onDelete: Restrict)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   movements StockMovement[]
-  purchaseOrderLines PurchaseOrderLine[]
+  purchaseItems PurchaseOrderItem[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
@@ -168,18 +167,20 @@ model Product {
 }
 
 model Supplier {
-  id        String   @id @default(uuid())
-  storeId   String
-  name      String
-  phone     String?
-  email     String?
-  address   String?
-  notes     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  storeId      String
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  notes        String?
+  leadTimeDays Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
   purchaseOrders PurchaseOrder[]
 
   @@unique([storeId, name])
@@ -187,55 +188,48 @@ model Supplier {
   @@map("suppliers")
 }
 
-model PurchaseOrderCounter {
-  storeId    String @id
-  nextNumber Int    @default(1)
-  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
-
-  @@map("purchase_order_counters")
-}
-
 model PurchaseOrder {
-  id          String              @id @default(uuid())
-  storeId     String
-  supplierId  String
-  number      String
-  status      PurchaseOrderStatus @default(DRAFT)
-  notes       String?
-  createdById String
-  submittedById String?
+  id           String         @id @default(uuid())
+  storeId      String
+  supplierId   String
+  number       Int
+  status       PurchaseStatus @default(DRAFT)
+  notes        String?
+  expectedDate DateTime?      @db.Date
+  createdById  String
+  submittedAt  DateTime?
   approvedById String?
-  createdAt   DateTime            @default(now())
-  submittedAt DateTime?
-  approvedAt  DateTime?
-  updatedAt   DateTime            @updatedAt
+  approvedAt   DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  createdBy User @relation("PurchaseOrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  submittedBy User? @relation("PurchaseOrderSubmittedBy", fields: [submittedById], references: [id], onDelete: Restrict)
-  approvedBy User? @relation("PurchaseOrderApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
-  lines PurchaseOrderLine[]
+  store      Store               @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  supplier   Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy  User                @relation("PurchaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?               @relation("PurchaseApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  items      PurchaseOrderItem[]
 
   @@unique([storeId, number])
   @@index([storeId, status])
   @@map("purchase_orders")
 }
 
-model PurchaseOrderLine {
-  id              String   @id @default(uuid())
-  purchaseOrderId String
-  productId       String
-  quantityOrdered Int
+model PurchaseOrderItem {
+  id               String   @id @default(uuid())
+  purchaseOrderId  String
+  productId        String
+  quantityOrdered  Int
   quantityReceived Int      @default(0)
-  unitCost        Decimal  @db.Decimal(12, 2)
+  unitCost         Decimal @db.Decimal(12, 2)
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([purchaseOrderId, productId])
   @@index([productId])
-  @@map("purchase_order_lines")
+  @@map("purchase_order_items")
 }
 
 model StockMovement {

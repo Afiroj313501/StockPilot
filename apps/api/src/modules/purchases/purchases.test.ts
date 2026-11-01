@@ -113,15 +113,15 @@ describe('purchase orders', () => {
     const p = await product(managerCookie);
     const created = await order(managerCookie, s.body.id, p.body.id);
     expect(created.status).toBe(201);
-    expect(created.body).toMatchObject({ number: 'PO-0001', status: 'DRAFT', total: '7.50' });
-    expect(created.body.lines[0].quantityReceived).toBe(0);
+    expect(created.body).toMatchObject({ number: 1, status: 'DRAFT', total: '7.50' });
+    expect(created.body.items[0].quantityReceived).toBe(0);
   });
   it('increments order numbers per store', async () => {
     const { managerCookie } = await setup('po-numbers');
     const s = await supplier(managerCookie);
     const p = await product(managerCookie);
-    expect((await order(managerCookie, s.body.id, p.body.id)).body.number).toBe('PO-0001');
-    expect((await order(managerCookie, s.body.id, p.body.id)).body.number).toBe('PO-0002');
+    expect((await order(managerCookie, s.body.id, p.body.id)).body.number).toBe(1);
+    expect((await order(managerCookie, s.body.id, p.body.id)).body.number).toBe(2);
   });
   it('does not allow archived suppliers on new orders', async () => {
     const { managerCookie } = await setup('po-archived');

@@ -38,3 +38,5 @@ ALTER TABLE "products" ADD CONSTRAINT "products_storeId_fkey"
   FOREIGN KEY ("storeId") REFERENCES "stores"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "products" ADD CONSTRAINT "products_categoryId_fkey"
   FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_productId_fkey"
+  FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

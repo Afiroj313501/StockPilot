@@ -44,3 +44,33 @@ export async function loginAs(app: Express, email: string): Promise<string> {
   if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
   return cookieFrom(res);
 }
+
+let seq = 0;
+
+export async function createSupplier(
+  app: Express,
+  cookie: string,
+  overrides: Record<string, unknown> = {},
+): Promise<string> {
+  const n = ++seq;
+  const res = await request(app)
+    .post('/api/v1/suppliers')
+    .set('Cookie', cookie)
+    .send({ name: `Supplier ${n}`, ...overrides });
+  if (res.status !== 201) throw new Error(`createSupplier failed: ${res.status}`);
+  return res.body.id as string;
+}
+
+export async function createProduct(
+  app: Express,
+  cookie: string,
+  overrides: Record<string, unknown> = {},
+): Promise<string> {
+  const n = ++seq;
+  const res = await request(app)
+    .post('/api/v1/products')
+    .set('Cookie', cookie)
+    .send({ name: `Product ${n}`, sku: `P-${n}`, costPrice: 1, sellingPrice: 2, ...overrides });
+  if (res.status !== 201) throw new Error(`createProduct failed: ${res.status}`);
+  return res.body.id as string;
+}

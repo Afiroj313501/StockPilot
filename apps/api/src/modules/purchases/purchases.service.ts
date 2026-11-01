@@ -1,4 +1,4 @@
-import { Prisma, type PurchaseOrderStatus } from '@prisma/client';
+import { Prisma, type PurchaseStatus } from '@prisma/client';
 import { prisma } from '../../db/prisma';
 import { AppError } from '../../utils/httpError';
 import { prismaCode } from '../../utils/prismaErrors';
@@ -6,12 +6,12 @@ import type { PurchaseOrderInput } from './purchases.schemas';
 
 const include = {
   supplier: { select: { id: true, name: true, phone: true, email: true } },
-  lines: { include: { product: { select: { id: true, name: true, sku: true } } } },
+  items: { include: { product: { select: { id: true, name: true, sku: true } } } },
 } satisfies Prisma.PurchaseOrderInclude;
 type OrderRow = Prisma.PurchaseOrderGetPayload<{ include: typeof include }>;
 
 function dto(order: OrderRow) {
-  const total = order.lines.reduce(
+  const total = order.items.reduce(
     (sum, line) => sum.plus(line.unitCost.times(line.quantityOrdered)),
     new Prisma.Decimal(0),
   );
@@ -22,13 +22,12 @@ function dto(order: OrderRow) {
     status: order.status,
     notes: order.notes,
     createdById: order.createdById,
-    submittedById: order.submittedById,
     approvedById: order.approvedById,
     createdAt: order.createdAt.toISOString(),
     submittedAt: order.submittedAt?.toISOString() ?? null,
     approvedAt: order.approvedAt?.toISOString() ?? null,
     total: total.toFixed(2),
-    lines: order.lines.map((line) => ({
+    items: order.items.map((line) => ({
       id: line.id,
       productId: line.productId,
       productName: line.product.name,
@@ -63,18 +62,13 @@ async function validateReferences(
 }
 
 async function nextNumber(tx: Prisma.TransactionClient, storeId: string) {
-  await tx.$queryRaw`SELECT id FROM stores WHERE id = ${storeId} FOR UPDATE`;
-  const counter = await tx.purchaseOrderCounter.findUnique({ where: { storeId } });
-  const number = counter?.nextNumber ?? 1;
-  if (counter) {
-    await tx.purchaseOrderCounter.update({
-      where: { storeId },
-      data: { nextNumber: { increment: 1 } },
-    });
-  } else {
-    await tx.purchaseOrderCounter.create({ data: { storeId, nextNumber: 2 } });
-  }
-  return `PO-${String(number).padStart(4, '0')}`;
+  const rows = await tx.$queryRaw<{ nextPurchaseNumber: number }[]>`
+    UPDATE stores
+    SET "nextPurchaseNumber" = "nextPurchaseNumber" + 1
+    WHERE id = ${storeId}
+    RETURNING "nextPurchaseNumber" - 1 AS "nextPurchaseNumber"`;
+  if (rows.length === 0) throw new AppError(404, 'NOT_FOUND', 'Store not found');
+  return rows[0]!.nextPurchaseNumber;
 }
 
 export async function listPurchaseOrders(storeId: string) {
@@ -107,7 +101,7 @@ export async function createPurchaseOrder(
         number,
         notes: input.notes ?? null,
         createdById: actorUserId,
-        lines: {
+        items: {
           create: input.lines.map((line) => ({
             productId: line.productId,
             quantityOrdered: line.quantityOrdered,
@@ -132,13 +126,13 @@ export async function updatePurchaseOrder(storeId: string, id: string, input: Pu
     if (order.status !== 'DRAFT')
       throw new AppError(409, 'ORDER_NOT_DRAFT', 'Only draft orders can be edited');
     await validateReferences(tx, storeId, input);
-    await tx.purchaseOrderLine.deleteMany({ where: { purchaseOrderId: id } });
+    await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
     return tx.purchaseOrder.update({
       where: { id },
       data: {
         supplierId: input.supplierId,
         notes: input.notes ?? null,
-        lines: {
+        items: {
           create: input.lines.map((line) => ({
             productId: line.productId,
             quantityOrdered: line.quantityOrdered,
@@ -156,15 +150,15 @@ async function transition(
   storeId: string,
   id: string,
   actorUserId: string,
-  from: PurchaseOrderStatus[],
-  to: PurchaseOrderStatus,
+  from: PurchaseStatus[],
+  to: PurchaseStatus,
 ) {
   const data =
     to === 'SUBMITTED'
-      ? { status: to, submittedById: actorUserId, submittedAt: new Date() }
+      ? { status: to, submittedAt: new Date() }
       : to === 'APPROVED'
         ? { status: to, approvedById: actorUserId, approvedAt: new Date() }
-        : { status: to };
+        : { status: to, cancelledAt: new Date() };
   const result = await prisma.purchaseOrder.updateMany({
     where: { id, storeId, status: { in: from } },
     data,
