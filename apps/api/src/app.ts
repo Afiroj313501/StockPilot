@@ -17,6 +17,7 @@ import { productsRouter } from './modules/products/products.routes';
 import { inventoryRouter } from './modules/inventory/inventory.routes';
 import { suppliersRouter } from './modules/suppliers/suppliers.routes';
 import { purchasesRouter } from './modules/purchases/purchases.routes';
+import { salesRouter } from './modules/sales/sales.routes';
 
 export interface AppOptions {
   authRateLimitMax?: number;
@@ -44,6 +45,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/inventory', inventoryRouter);
   app.use('/api/v1/suppliers', suppliersRouter);
   app.use('/api/v1/purchases', purchasesRouter);
+  app.use('/api/v1/sales', salesRouter);
 
   app.use(notFound);
   app.use(errorHandler);
