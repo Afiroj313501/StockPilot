@@ -58,3 +58,15 @@
   retries.
 - Dialogs use the native `<dialog>` element for browser focus trapping and Esc
   handling.
+
+## Suppliers and purchase orders (chunk 11)
+
+- Suppliers are store-scoped and manager-and-owner accessible. They are archived
+  with `isActive=false`; archived suppliers cannot be used for new orders.
+- Purchase orders use `DRAFT -> SUBMITTED -> APPROVED`, with `CANCELLED`
+  allowed from any pre-receiving state. Only owners can approve.
+- Order numbers are allocated by a locked per-store counter in the creation
+  transaction, so failed creates do not consume numbers.
+- Line quantities and costs are validated server-side. Totals use Decimal
+  arithmetic and are returned as strings; receiving fields remain zero until
+  the receiving chunk.

@@ -10,6 +10,7 @@ import { ProductsPage } from './pages/ProductsPage';
 import { ProductFormPage } from './pages/ProductFormPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { InventoryPage } from './pages/InventoryPage';
+import { SuppliersPage } from './pages/SuppliersPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
               <Route path="/products/:id/edit" element={<ProductFormPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
             </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />
