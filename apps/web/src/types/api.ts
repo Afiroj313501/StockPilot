@@ -256,6 +256,7 @@ export interface SaleSummary {
   createdAt: string;
   cashierName: string;
   unitCount: number;
+  returnStatus: ReturnStatus;
   total: string;
   paymentMethod: PaymentMethod | null;
 }
@@ -272,4 +273,80 @@ export interface CheckoutPayload {
   customerName: string | null;
   payment: { method: PaymentMethod; amountTendered: number };
   expectedTotal: number;
+}
+
+
+export type ReturnReason = 'CHANGED_MIND' | 'DAMAGED' | 'WRONG_ITEM' | 'OTHER';
+export type ReturnStatus = 'NONE' | 'PARTIAL' | 'FULL';
+
+export interface SaleReturnDetail {
+  id: string;
+  number: number;
+  reference: string;
+  saleId: string;
+  saleReference: string;
+  createdAt: string;
+  processedByName: string;
+  note: string | null;
+  refundMethod: PaymentMethod;
+  refundTotal: string;
+  taxRefundTotal: string;
+  items: {
+    productId: string;
+    productName: string;
+    productSku: string;
+    quantity: number;
+    reason: ReturnReason;
+    restock: boolean;
+    refundAmount: string;
+    taxRefund: string;
+  }[];
+}
+
+export interface ReturnSummary {
+  id: string;
+  number: number;
+  reference: string;
+  saleId: string;
+  saleReference: string;
+  createdAt: string;
+  processedByName: string;
+  unitCount: number;
+  refundTotal: string;
+  refundMethod: PaymentMethod;
+}
+
+export interface SaleReturnable {
+  saleId: string;
+  saleReference: string;
+  saleStatus: 'COMPLETED' | 'VOIDED';
+  currency: string;
+  refundMethod: PaymentMethod;
+  returnStatus: ReturnStatus;
+  lines: {
+    productId: string;
+    productName: string;
+    productSku: string;
+    quantitySold: number;
+    quantityReturned: number;
+    quantityReturnable: number;
+    unitPrice: string;
+    lineTotal: string;
+  }[];
+  returns: SaleReturnDetail[];
+}
+
+export interface ReturnPreview {
+  currency: string;
+  refundMethod: PaymentMethod;
+  refundTotal: string;
+  taxRefundTotal: string;
+  lines: { productId: string; productName: string; quantity: number; refundAmount: string; taxRefund: string }[];
+}
+
+export interface CreateReturnPayload {
+  saleId: string;
+  idempotencyKey: string;
+  note: string | null;
+  items: { productId: string; quantity: number; restock: boolean; reason: ReturnReason }[];
 }
