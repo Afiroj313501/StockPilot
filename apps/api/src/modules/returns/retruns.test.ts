@@ -51,11 +51,20 @@ async function setup() {
 }
 type Setup = Awaited<ReturnType<typeof setup>>;
 
-async function sale(cookie: string, items: { productId: string; quantity: number }[], extra: Record<string, unknown> = {}) {
+async function sale(
+  cookie: string,
+  items: { productId: string; quantity: number }[],
+  extra: Record<string, unknown> = {},
+) {
   const res = await request(app)
     .post('/api/v1/sales')
     .set('Cookie', cookie)
-    .send({ idempotencyKey: nextKey(), items, payment: { method: 'CASH', amountTendered: 1000 }, ...extra });
+    .send({
+      idempotencyKey: nextKey(),
+      items,
+      payment: { method: 'CASH', amountTendered: 1000 },
+      ...extra,
+    });
   if (res.status !== 201) throw new Error(`sale failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body as { id: string; total: string };
 }
@@ -68,7 +77,12 @@ const line = (productId: string, quantity: number, extra: Record<string, unknown
   ...extra,
 });
 
-const giveBack = (cookie: string, saleId: string, items: Record<string, unknown>[], extra: Record<string, unknown> = {}) =>
+const giveBack = (
+  cookie: string,
+  saleId: string,
+  items: Record<string, unknown>[],
+  extra: Record<string, unknown> = {},
+) =>
   request(app)
     .post('/api/v1/returns')
     .set('Cookie', cookie)
@@ -80,7 +94,8 @@ async function stockOf(productId: string): Promise<number> {
 const returnCount = () => prisma.saleReturn.count();
 const returnMovements = (productId?: string) =>
   prisma.stockMovement.count({ where: { type: 'RETURN', ...(productId ? { productId } : {}) } });
-const byProduct = (items: { productId: string }[], id: string) => items.find((i) => i.productId === id);
+const byProduct = (items: { productId: string }[], id: string) =>
+  items.find((i) => i.productId === id);
 
 describe('returning a sale', () => {
   it('refunds from the sale figures, restocks through the ledger and reconciles', async () => {
@@ -92,9 +107,14 @@ describe('returning a sale', () => {
 
     // Later price and tax changes must not affect a return of an earlier sale.
     await patchSettings(s.owner.cookie, { taxRatePercent: 50 });
-    await request(app).patch(`/api/v1/products/${s.p1}`).set('Cookie', s.owner.cookie).send({ sellingPrice: 99 });
+    await request(app)
+      .patch(`/api/v1/products/${s.p1}`)
+      .set('Cookie', s.owner.cookie)
+      .send({ sellingPrice: 99 });
 
-    const res = await giveBack(s.managerCookie, made.id, [line(s.p1, 2), line(s.p2, 1)], { note: 'Customer came back' });
+    const res = await giveBack(s.managerCookie, made.id, [line(s.p1, 2), line(s.p2, 1)], {
+      note: 'Customer came back',
+    });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       reference: 'R-000001',
@@ -105,11 +125,18 @@ describe('returning a sale', () => {
       processedByName: 'MANAGER a',
       note: 'Customer came back',
     });
-    expect(byProduct(res.body.items, s.p1)).toMatchObject({ quantity: 2, refundAmount: '4.40', taxRefund: '0.40', restock: true });
+    expect(byProduct(res.body.items, s.p1)).toMatchObject({
+      quantity: 2,
+      refundAmount: '4.40',
+      taxRefund: '0.40',
+      restock: true,
+    });
 
     expect(await stockOf(s.p1)).toBe(100);
     expect(await stockOf(s.p2)).toBe(100);
-    const movement = await prisma.stockMovement.findFirstOrThrow({ where: { productId: s.p1, type: 'RETURN' } });
+    const movement = await prisma.stockMovement.findFirstOrThrow({
+      where: { productId: s.p1, type: 'RETURN' },
+    });
     expect(movement).toMatchObject({
       quantityChange: 2,
       quantityBefore: 98,
@@ -118,11 +145,17 @@ describe('returning a sale', () => {
       referenceId: res.body.id,
     });
 
-    const status = await request(app).get(`/api/v1/returns/by-sale/${made.id}`).set('Cookie', s.managerCookie);
+    const status = await request(app)
+      .get(`/api/v1/returns/by-sale/${made.id}`)
+      .set('Cookie', s.managerCookie);
     expect(status.body.returnStatus).toBe('FULL');
-    expect(status.body.lines.every((l: { quantityReturnable: number }) => l.quantityReturnable === 0)).toBe(true);
+    expect(
+      status.body.lines.every((l: { quantityReturnable: number }) => l.quantityReturnable === 0),
+    ).toBe(true);
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 
@@ -147,7 +180,9 @@ describe('returning a sale', () => {
     expect(extra.body.error.code).toBe('OVER_RETURN');
     expect(await stockOf(p3)).toBe(10);
 
-    const status = await request(app).get(`/api/v1/returns/by-sale/${made.id}`).set('Cookie', s.managerCookie);
+    const status = await request(app)
+      .get(`/api/v1/returns/by-sale/${made.id}`)
+      .set('Cookie', s.managerCookie);
     expect(status.body.returnStatus).toBe('FULL');
     expect(status.body.returns).toHaveLength(3);
   });
@@ -174,7 +209,9 @@ describe('restocking decisions', () => {
     const s = await setup();
     const made = await sale(s.cashierCookie, [{ productId: s.p1, quantity: 3 }]); // 6.60, stock 97
 
-    const refused = await giveBack(s.managerCookie, made.id, [line(s.p1, 1, { reason: 'DAMAGED', restock: true })]);
+    const refused = await giveBack(s.managerCookie, made.id, [
+      line(s.p1, 1, { reason: 'DAMAGED', restock: true }),
+    ]);
     expect(refused.status).toBe(400);
     expect(refused.body.error.code).toBe('RESTOCK_NOT_ALLOWED');
     expect(await returnCount()).toBe(0);
@@ -191,14 +228,18 @@ describe('restocking decisions', () => {
     expect(noDecision.status).toBe(400);
     expect(noDecision.body.error.code).toBe('VALIDATION_ERROR');
 
-    const ok = await giveBack(s.managerCookie, made.id, [line(s.p1, 1, { reason: 'DAMAGED', restock: false })]);
+    const ok = await giveBack(s.managerCookie, made.id, [
+      line(s.p1, 1, { reason: 'DAMAGED', restock: false }),
+    ]);
     expect(ok.status).toBe(201);
     expect(ok.body.refundTotal).toBe('2.20');
     expect(byProduct(ok.body.items, s.p1)).toMatchObject({ reason: 'DAMAGED', restock: false });
     expect(await stockOf(s.p1)).toBe(97); // unchanged
     expect(await returnMovements()).toBe(0);
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 
@@ -251,7 +292,11 @@ describe('limits and validation', () => {
     const made = await sale(s.cashierCookie, [{ productId: s.p1, quantity: 2 }]);
     const ok = line(s.p1, 1);
 
-    const bad: { items: Record<string, unknown>[]; extra?: Record<string, unknown>; saleId?: string }[] = [
+    const bad: {
+      items: Record<string, unknown>[];
+      extra?: Record<string, unknown>;
+      saleId?: string;
+    }[] = [
       { items: [] },
       { items: [ok, line(s.p1, 1)] }, // duplicate product
       { items: [line(s.p1, 0)] },
@@ -339,7 +384,9 @@ describe('idempotency and concurrency', () => {
     expect(await stockOf(s.p1)).toBe(100);
     expect(await returnCount()).toBe(3);
 
-    const integrity = await request(app).get('/api/v1/inventory/integrity').set('Cookie', s.owner.cookie);
+    const integrity = await request(app)
+      .get('/api/v1/inventory/integrity')
+      .set('Cookie', s.owner.cookie);
     expect(integrity.body.ok).toBe(true);
   });
 });
@@ -408,8 +455,12 @@ describe('access and isolation', () => {
 
     const attack = await giveBack(b.cookie, made.id, [line(s.p1, 1)]);
     expect(attack.status).toBe(404);
-    expect((await request(app).get(`/api/v1/returns/by-sale/${made.id}`).set('Cookie', b.cookie)).status).toBe(404);
-    expect((await request(app).get(`/api/v1/returns/${mine.body.id}`).set('Cookie', b.cookie)).status).toBe(404);
+    expect(
+      (await request(app).get(`/api/v1/returns/by-sale/${made.id}`).set('Cookie', b.cookie)).status,
+    ).toBe(404);
+    expect(
+      (await request(app).get(`/api/v1/returns/${mine.body.id}`).set('Cookie', b.cookie)).status,
+    ).toBe(404);
     const view = await request(app)
       .post('/api/v1/returns/preview')
       .set('Cookie', b.cookie)
@@ -447,7 +498,11 @@ describe('history', () => {
     await giveBack(s.managerCookie, b.id, [line(s.p1, 1)]);
 
     const list = await request(app).get('/api/v1/sales').set('Cookie', s.owner.cookie);
-    expect(list.body.items.map((i: { returnStatus: string }) => i.returnStatus)).toEqual(['NONE', 'PARTIAL', 'FULL']);
+    expect(list.body.items.map((i: { returnStatus: string }) => i.returnStatus)).toEqual([
+      'NONE',
+      'PARTIAL',
+      'FULL',
+    ]);
     expect(list.body.items.map((i: { number: number }) => i.number)).toEqual([3, 2, 1]);
   });
 
@@ -462,21 +517,34 @@ describe('history', () => {
     const all = await request(app).get('/api/v1/returns').set('Cookie', s.managerCookie);
     expect(all.body.total).toBe(3);
     expect(all.body.items.map((i: { number: number }) => i.number)).toEqual([3, 2, 1]);
-    expect(all.body.items[0]).toMatchObject({ reference: 'R-000003', saleReference: 'S-000002', unitCount: 1 });
+    expect(all.body.items[0]).toMatchObject({
+      reference: 'R-000003',
+      saleReference: 'S-000002',
+      unitCount: 1,
+    });
 
-    const forSale = await request(app).get(`/api/v1/returns?saleId=${a.id}`).set('Cookie', s.managerCookie);
+    const forSale = await request(app)
+      .get(`/api/v1/returns?saleId=${a.id}`)
+      .set('Cookie', s.managerCookie);
     expect(forSale.body.total).toBe(2);
 
-    const page2 = await request(app).get('/api/v1/returns?pageSize=2&page=2').set('Cookie', s.managerCookie);
+    const page2 = await request(app)
+      .get('/api/v1/returns?pageSize=2&page=2')
+      .set('Cookie', s.managerCookie);
     expect(page2.body.items).toHaveLength(1);
 
-    const one = await request(app).get(`/api/v1/returns/${last.body.id}`).set('Cookie', s.managerCookie);
+    const one = await request(app)
+      .get(`/api/v1/returns/${last.body.id}`)
+      .set('Cookie', s.managerCookie);
     expect(one.status).toBe(200);
     expect(one.body.items[0]).toMatchObject({ productId: s.p2, quantity: 1 });
     const none = await request(app)
       .get('/api/v1/returns/00000000-0000-4000-8000-000000000000')
       .set('Cookie', s.managerCookie);
     expect(none.status).toBe(404);
-    expect((await request(app).get('/api/v1/returns?pageSize=1000').set('Cookie', s.managerCookie)).status).toBe(400);
+    expect(
+      (await request(app).get('/api/v1/returns?pageSize=1000').set('Cookie', s.managerCookie))
+        .status,
+    ).toBe(400);
   });
 });

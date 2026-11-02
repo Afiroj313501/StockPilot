@@ -30,7 +30,11 @@ const fromCents = (c: bigint) => {
 const money = (c: bigint) => formatMoney(fromCents(c));
 const saleNotFound = () => new AppError(404, 'NOT_FOUND', 'Sale not found');
 const keyReused = () =>
-  new AppError(409, 'IDEMPOTENCY_KEY_REUSED', 'This idempotency key was already used for a different request');
+  new AppError(
+    409,
+    'IDEMPOTENCY_KEY_REUSED',
+    'This idempotency key was already used for a different request',
+  );
 
 function statusOf(sold: number, returned: number): 'NONE' | 'PARTIAL' | 'FULL' {
   return returned === 0 ? 'NONE' : returned >= sold ? 'FULL' : 'PARTIAL';
@@ -91,7 +95,11 @@ interface PlannedLine {
 
 // Validates the lines against what is still returnable and works out the refund from the
 // sale's saved figures. Used by both the preview and the real return.
-function buildPlan(sale: SaleRow, returnedBy: Map<string, number>, lines: { productId: string; quantity: number }[]) {
+function buildPlan(
+  sale: SaleRow,
+  returnedBy: Map<string, number>,
+  lines: { productId: string; quantity: number }[],
+) {
   if (sale.status !== 'COMPLETED') {
     throw new AppError(409, 'INVALID_STATE', 'Only completed sales can be returned.');
   }
@@ -101,7 +109,8 @@ function buildPlan(sale: SaleRow, returnedBy: Map<string, number>, lines: { prod
 
   const planned: PlannedLine[] = lines.map((line) => {
     const item = itemByProduct.get(line.productId);
-    if (!item) throw new AppError(400, 'PRODUCT_NOT_ON_SALE', 'A product in this return is not on the sale');
+    if (!item)
+      throw new AppError(400, 'PRODUCT_NOT_ON_SALE', 'A product in this return is not on the sale');
 
     const before = returnedBy.get(item.id) ?? 0;
     const returnable = item.quantity - before;
@@ -124,7 +133,10 @@ function buildPlan(sale: SaleRow, returnedBy: Map<string, number>, lines: { prod
 
 export async function previewReturn(storeId: string, input: PreviewReturnInput) {
   const sale = await loadSale(prisma, storeId, input.saleId);
-  const returnedBy = await returnedQuantities(prisma, sale.items.map((i) => i.id));
+  const returnedBy = await returnedQuantities(
+    prisma,
+    sale.items.map((i) => i.id),
+  );
   const plan = buildPlan(sale, returnedBy, input.items);
   return {
     currency: sale.currency,
@@ -184,11 +196,16 @@ export async function createReturn(
 
         // 3. Validate against what is still returnable and work out the refund.
         const sale = await loadSale(tx, storeId, input.saleId);
-        const returnedBy = await returnedQuantities(tx, sale.items.map((i) => i.id));
+        const returnedBy = await returnedQuantities(
+          tx,
+          sale.items.map((i) => i.id),
+        );
         const plan = buildPlan(sale, returnedBy, input.items);
 
         // 4. Lock the products that go back into stock (id order, so no deadlocks).
-        const restockIds = [...new Set(input.items.filter((l) => l.restock).map((l) => l.productId))].sort();
+        const restockIds = [
+          ...new Set(input.items.filter((l) => l.restock).map((l) => l.productId)),
+        ].sort();
         const stock = new Map<string, number>();
         if (restockIds.length > 0) {
           await tx.$queryRaw`
@@ -241,12 +258,20 @@ export async function createReturn(
         for (const [i, p] of plan.planned.entries()) {
           if (!input.items[i]!.restock) continue;
           const before = stock.get(p.item.productId);
-          if (before === undefined) throw new AppError(400, 'INVALID_PRODUCT', 'Product not found in this store');
+          if (before === undefined)
+            throw new AppError(400, 'INVALID_PRODUCT', 'Product not found in this store');
           const after = before + p.quantity;
           if (after > MAX_STOCK) {
-            throw new AppError(400, 'QUANTITY_TOO_LARGE', 'The resulting stock quantity is too large');
+            throw new AppError(
+              400,
+              'QUANTITY_TOO_LARGE',
+              'The resulting stock quantity is too large',
+            );
           }
-          await tx.product.update({ where: { id: p.item.productId }, data: { stockQuantity: after } });
+          await tx.product.update({
+            where: { id: p.item.productId },
+            data: { stockQuantity: after },
+          });
           await tx.stockMovement.create({
             data: {
               storeId,
@@ -331,7 +356,10 @@ export async function getReturn(storeId: string, id: string) {
 export async function getSaleReturnable(storeId: string, saleId: string) {
   const sale = await loadSale(prisma, storeId, saleId);
   const [returnedBy, returns] = await Promise.all([
-    returnedQuantities(prisma, sale.items.map((i) => i.id)),
+    returnedQuantities(
+      prisma,
+      sale.items.map((i) => i.id),
+    ),
     prisma.saleReturn.findMany({
       where: { saleId: sale.id, storeId },
       include: returnInclude,

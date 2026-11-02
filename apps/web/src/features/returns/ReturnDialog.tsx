@@ -20,7 +20,12 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
   const create = useCreateReturn();
   const open = data.lines.filter((l) => l.quantityReturnable > 0);
   const [rows, setRows] = useState<Record<string, RowState>>(() =>
-    Object.fromEntries(open.map((l) => [l.productId, { qty: '', reason: 'CHANGED_MIND' as ReturnReason, restock: true }])),
+    Object.fromEntries(
+      open.map((l) => [
+        l.productId,
+        { qty: '', reason: 'CHANGED_MIND' as ReturnReason, restock: true },
+      ]),
+    ),
   );
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,7 +98,9 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
       {
         onSuccess: onClose,
         onError: (err) =>
-          setFormError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.'),
+          setFormError(
+            err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
+          ),
       },
     );
   };
@@ -101,8 +108,8 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       <p className="text-sm text-slate-600">
-        Enter how many units came back. For each product, choose the reason and whether the units go back
-        into stock.
+        Enter how many units came back. For each product, choose the reason and whether the units go
+        back into stock.
       </p>
       {formError && (
         <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -112,7 +119,11 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
 
       <ul className="divide-y divide-slate-100">
         {open.map((l) => {
-          const row = rows[l.productId] ?? { qty: '', reason: 'CHANGED_MIND' as ReturnReason, restock: true };
+          const row = rows[l.productId] ?? {
+            qty: '',
+            reason: 'CHANGED_MIND' as ReturnReason,
+            restock: true,
+          };
           const damaged = row.reason === 'DAMAGED';
           return (
             <li key={l.productId} className="space-y-2 py-3">
@@ -120,8 +131,8 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
                 <div className="text-sm">
                   <div className="font-medium text-navy-900">{l.productName}</div>
                   <div className="text-xs text-slate-500">
-                    {l.productSku} · sold {l.quantitySold}, returned {l.quantityReturned}, can return{' '}
-                    {l.quantityReturnable}
+                    {l.productSku} · sold {l.quantitySold}, returned {l.quantityReturned}, can
+                    return {l.quantityReturnable}
                   </div>
                 </div>
                 <div>
@@ -144,7 +155,9 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
                 <select
                   aria-label={`Reason for ${l.productName}`}
                   value={row.reason}
-                  onChange={(ev) => patchRow(l.productId, { reason: ev.target.value as ReturnReason })}
+                  onChange={(ev) =>
+                    patchRow(l.productId, { reason: ev.target.value as ReturnReason })
+                  }
                   className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
                   {(Object.keys(REASON_LABEL) as ReturnReason[]).map((r) => (
@@ -164,13 +177,20 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
                   Return to stock
                 </label>
               </div>
-              {damaged && <p className="text-xs text-slate-500">Damaged items are not put back into stock.</p>}
+              {damaged && (
+                <p className="text-xs text-slate-500">Damaged items are not put back into stock.</p>
+              )}
             </li>
           );
         })}
       </ul>
 
-      <TextField label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+      <TextField
+        label="Note (optional)"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={300}
+      />
 
       <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm">
         {showPreview ? (
@@ -184,17 +204,21 @@ function ReturnForm({ data, onClose }: { data: SaleReturnable; onClose: () => vo
             </p>
           </>
         ) : (
-          <p className="text-slate-600">The refund amount appears here once you enter a quantity.</p>
+          <p className="text-slate-600">
+            The refund amount appears here once you enter a quantity.
+          </p>
         )}
         {preview.isError && items.length > 0 && (
           <p className="mt-1 text-red-700">
-            {preview.error instanceof ApiError ? preview.error.message : 'Could not work out the refund.'}
+            {preview.error instanceof ApiError
+              ? preview.error.message
+              : 'Could not work out the refund.'}
           </p>
         )}
       </div>
       <p className="text-xs text-slate-500">
-        StockPilot records this refund only. It does not send money to a card or wallet, so give the refund
-        through your normal payment method.
+        StockPilot records this refund only. It does not send money to a card or wallet, so give the
+        refund through your normal payment method.
       </p>
 
       <div className="flex justify-end gap-3 pt-2">

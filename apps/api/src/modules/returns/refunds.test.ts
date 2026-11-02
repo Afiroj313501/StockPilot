@@ -22,7 +22,8 @@ describe('refund proration', () => {
       for (let quantity = 1; quantity <= 9; quantity++) {
         // one unit at a time
         let sum = 0n;
-        for (let done = 0; done < quantity; done++) sum += refundForReturn(amount, done, 1, quantity);
+        for (let done = 0; done < quantity; done++)
+          sum += refundForReturn(amount, done, 1, quantity);
         expect(sum).toBe(amount);
 
         // every two-step split

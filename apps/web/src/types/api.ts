@@ -275,7 +275,6 @@ export interface CheckoutPayload {
   expectedTotal: number;
 }
 
-
 export type ReturnReason = 'CHANGED_MIND' | 'DAMAGED' | 'WRONG_ITEM' | 'OTHER';
 export type ReturnStatus = 'NONE' | 'PARTIAL' | 'FULL';
 
@@ -341,7 +340,13 @@ export interface ReturnPreview {
   refundMethod: PaymentMethod;
   refundTotal: string;
   taxRefundTotal: string;
-  lines: { productId: string; productName: string; quantity: number; refundAmount: string; taxRefund: string }[];
+  lines: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    refundAmount: string;
+    taxRefund: string;
+  }[];
 }
 
 export interface CreateReturnPayload {

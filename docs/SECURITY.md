@@ -75,3 +75,13 @@ Reporting procedure and known limitations are added in Phase 13.
   by storeId, and cashiers are further limited to their own sales (404 otherwise).
 - Row locks plus idempotency keys prevent overselling and double sales (covered by concurrency tests).
 - Discounts require MANAGER or OWNER. Known gap: no configurable cashier discount limit yet.
+
+## Returns (chunk 14)
+
+- Every returns endpoint requires MANAGER or OWNER and a verified store context (checked before any
+  validation or database access); cashiers get 403 everywhere.
+- Sale lookups are scoped by storeId (another store's sale is 404). Request bodies are strict, so
+  `refundTotal`, `refundAmount`, `storeId` and similar fields are rejected; refunds are always
+  calculated by the server from the sale's saved figures.
+- A row lock on the sale plus idempotency keys prevent over-returning and double refunds (covered by
+  concurrency tests). Damaged items cannot be restocked through the API.

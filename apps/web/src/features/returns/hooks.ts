@@ -22,7 +22,8 @@ export function useSaleReturnable(saleId: string | undefined) {
 export function useReturnPreview(saleId: string, items: { productId: string; quantity: number }[]) {
   return useQuery({
     queryKey: ['returns', 'preview', saleId, items],
-    queryFn: () => api<ReturnPreview>('/returns/preview', { method: 'POST', body: { saleId, items } }),
+    queryFn: () =>
+      api<ReturnPreview>('/returns/preview', { method: 'POST', body: { saleId, items } }),
     enabled: items.length > 0,
     placeholderData: keepPreviousData,
     retry: false,
@@ -32,7 +33,8 @@ export function useReturnPreview(saleId: string, items: { productId: string; qua
 export function useCreateReturn() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreateReturnPayload) => api<SaleReturnDetail>('/returns', { method: 'POST', body }),
+    mutationFn: (body: CreateReturnPayload) =>
+      api<SaleReturnDetail>('/returns', { method: 'POST', body }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['returns'] });
       void qc.invalidateQueries({ queryKey: ['sales'] });

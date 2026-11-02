@@ -23,7 +23,11 @@ const returnLine = z
 export const previewReturnSchema = z
   .object({
     saleId: z.string().uuid(),
-    items: z.array(previewLine).min(1, 'Choose at least one product').max(200).refine(uniqueProducts, 'Each product can appear only once'),
+    items: z
+      .array(previewLine)
+      .min(1, 'Choose at least one product')
+      .max(200)
+      .refine(uniqueProducts, 'Each product can appear only once'),
   })
   .strict();
 
@@ -43,7 +47,11 @@ export const createReturnSchema = z
       .transform((v) => (v === '' ? null : v))
       .nullable()
       .optional(),
-    items: z.array(returnLine).min(1, 'Choose at least one product').max(200).refine(uniqueProducts, 'Each product can appear only once'),
+    items: z
+      .array(returnLine)
+      .min(1, 'Choose at least one product')
+      .max(200)
+      .refine(uniqueProducts, 'Each product can appear only once'),
   })
   .strict();
 

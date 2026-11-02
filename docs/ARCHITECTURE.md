@@ -113,3 +113,25 @@
 - Roles: all roles can sell. Discounts are manager+. Cashiers see only their own sales.
 - Endpoints: `POST /sales/preview`, `POST /sales`, `GET /sales`, `GET /sales/:id`.
 - Limits: no returns or voids yet; one payment and one tax rate per sale; no date filters on history.
+
+## Returns and refunds (chunk 14)
+
+- `SaleReturn` and `SaleReturnItem`, with per-store numbers (`R-000001`) from `Store.nextReturnNumber`.
+  Manager+ only. Lines are identified by `productId` (a product appears once per sale).
+- Returnable quantity per line = quantity sold minus quantity already returned, checked under a row
+  lock on the sale (409 `OVER_RETURN`).
+- Refund = the sale line's saved `lineTotal` (discount and tax already included), prorated
+  cumulatively: after k of Q units are back, refunded = round(lineTotal x k / Q). Each return refunds
+  the difference to what earlier returns already paid, so any split adds up to the exact line total.
+  Tax contained in the refund is stored in `taxRefund`. Current prices and tax settings are never used.
+- Every line carries an explicit `restock: true/false` and a reason. A `DAMAGED` line can never be
+  restocked (400 `RESTOCK_NOT_ALLOWED`). Restocked lines write `RETURN` ledger movements and increase
+  stock; others change no stock. Restocking does not change the average cost.
+- The refund is an internal record: amount and the sale's original payment method. StockPilot never
+  sends money to a payment provider and the UI says so.
+- Idempotency: a repeated `idempotencyKey` returns the original return (HTTP 200, `Idempotent-Replayed: true`);
+  the same key on another sale or by another user is 409.
+- Endpoints: `POST /returns`, `POST /returns/preview`, `GET /returns`, `GET /returns/:id`,
+  `GET /returns/by-sale/:saleId`. `GET /sales` rows include `returnStatus` (NONE, PARTIAL, FULL).
+- Limits: no cashier returns, no voiding, no returns without a receipt, "damaged is never restocked"
+  is fixed rather than configurable.
