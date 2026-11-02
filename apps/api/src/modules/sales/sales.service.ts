@@ -364,7 +364,7 @@ export async function listSales(storeId: string, role: Role, userId: string, q: 
       where,
       include: {
         cashier: { select: { name: true } },
-        items: { select: { quantity: true } },
+        items: { select: { quantity: true, returnItems: { select: { quantity: true } } } },
         payments: { select: { method: true } },
       },
       orderBy: [{ number: 'desc' }],
@@ -374,24 +374,31 @@ export async function listSales(storeId: string, role: Role, userId: string, q: 
   ]);
 
   return {
-    items: rows.map((s) => ({
-      id: s.id,
-      number: s.number,
-      reference: reference(s.number),
-      status: s.status,
-      createdAt: s.createdAt.toISOString(),
-      cashierName: s.cashier.name,
-      unitCount: s.items.reduce((sum, i) => sum + i.quantity, 0),
-      total: formatMoney(s.total),
-      paymentMethod: s.payments[0]?.method ?? null,
-    })),
+    items: rows.map((s) => {
+      const unitCount = s.items.reduce((sum, i) => sum + i.quantity, 0);
+      const returned = s.items.reduce(
+        (sum, i) => sum + i.returnItems.reduce((inner, r) => inner + r.quantity, 0),
+        0,
+      );
+      return {
+        id: s.id,
+        number: s.number,
+        reference: reference(s.number),
+        status: s.status,
+        createdAt: s.createdAt.toISOString(),
+        cashierName: s.cashier.name,
+        unitCount,
+        returnStatus: returned === 0 ? 'NONE' : returned >= unitCount ? 'FULL' : 'PARTIAL',
+        total: formatMoney(s.total),
+        paymentMethod: s.payments[0]?.method ?? null,
+      };
+    }),
     page: q.page,
     pageSize: q.pageSize,
     total,
     totalPages: Math.ceil(total / q.pageSize),
   };
 }
-
 export async function getSale(storeId: string, role: Role, userId: string, id: string) {
   const row = await prisma.sale.findFirst({
     where: { id, storeId, ...visibleTo(role, userId) },
