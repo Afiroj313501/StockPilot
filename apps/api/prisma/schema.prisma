@@ -49,6 +49,7 @@ model User {
   approvedPurchases PurchaseOrder[] @relation("PurchaseApprovedBy")
   receivedReceipts PurchaseReceipt[]
   sales Sale[]
+  processedReturns SaleReturn[]
 
   @@map("users")
 }
@@ -70,6 +71,8 @@ model Store {
   sales          Sale[]
   payments       Payment[]
   nextSaleNumber Int       @default(1)
+  saleReturns      SaleReturn[]
+  nextReturnNumber Int          @default(1)
   nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
@@ -167,6 +170,7 @@ model Product {
   averageCost  Decimal?             @db.Decimal(12, 4) // moving weighted average; null = use costPrice
   receiptItems PurchaseReceiptItem[]
   saleItems SaleItem[]
+  returnItems SaleReturnItem[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
@@ -346,6 +350,7 @@ model Sale {
   cashier  User       @relation(fields: [cashierId], references: [id], onDelete: Restrict)
   items    SaleItem[]
   payments Payment[]
+  returns SaleReturn[]
 
   @@unique([storeId, number])
   @@unique([storeId, idempotencyKey])
@@ -370,6 +375,7 @@ model SaleItem {
 
   sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Restrict)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  returnItems SaleReturnItem[]
 
   @@index([saleId])
   @@index([productId])
@@ -391,4 +397,57 @@ model Payment {
 
   @@index([saleId])
   @@map("payments")
+}
+
+enum ReturnReason {
+  CHANGED_MIND
+  DAMAGED
+  WRONG_ITEM
+  OTHER
+}
+
+model SaleReturn {
+  id             String        @id @default(uuid())
+  storeId        String
+  saleId         String
+  number         Int
+  note           String?
+  refundMethod   PaymentMethod // the sale's payment method; the refund is recorded here only
+  refundTotal    Decimal       @db.Decimal(12, 2)
+  taxRefundTotal Decimal       @db.Decimal(12, 2) // the tax contained in the refund (information)
+  processedById  String
+  idempotencyKey String
+  createdAt      DateTime      @default(now())
+
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  sale        Sale             @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  processedBy User             @relation(fields: [processedById], references: [id], onDelete: Restrict)
+  items       SaleReturnItem[]
+
+  @@unique([storeId, number])
+  @@unique([storeId, idempotencyKey])
+  @@index([saleId])
+  @@index([storeId, createdAt])
+  @@map("sale_returns")
+}
+
+model SaleReturnItem {
+  id           String       @id @default(uuid())
+  returnId     String
+  saleItemId   String
+  productId    String
+  quantity     Int
+  reason       ReturnReason
+  restock      Boolean // the explicit restocking decision
+  refundAmount Decimal      @db.Decimal(12, 2)
+  taxRefund    Decimal      @db.Decimal(12, 2)
+
+  saleReturn SaleReturn @relation(fields: [returnId], references: [id], onDelete: Restrict)
+  saleItem   SaleItem   @relation(fields: [saleItemId], references: [id], onDelete: Restrict)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([returnId])
+  @@index([saleItemId])
+  @@index([productId])
+  @@map("sale_return_items")
 }
