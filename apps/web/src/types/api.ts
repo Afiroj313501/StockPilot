@@ -355,3 +355,80 @@ export interface CreateReturnPayload {
   note: string | null;
   items: { productId: string; quantity: number; restock: boolean; reason: ReturnReason }[];
 }
+
+
+export interface ReportPeriod {
+  from: string;
+  to: string;
+  timeZone: string;
+  today: string;
+  group?: 'day' | 'week' | 'month';
+}
+
+export interface ReportMetrics {
+  salesCount: number;
+  returnsCount: number;
+  grossSales: string;
+  discounts: string;
+  taxCollected: string;
+  salesTotal: string;
+  refunds: string;
+  taxRefunded: string;
+  netSales: string;
+  cogs: string;
+  grossProfit: string;
+}
+
+export interface SalesSummary {
+  period: ReportPeriod;
+  totals: ReportMetrics;
+  series: (ReportMetrics & { bucket: string })[];
+  warnings: { zeroCostLines: number };
+}
+
+export interface ProductReportRow {
+  productId: string;
+  name: string;
+  sku: string;
+  unitsSold: number;
+  unitsReturned: number;
+  netUnits: number;
+  netRevenue: string;
+  cogs: string;
+  grossProfit: string;
+}
+
+export interface CategoryReportRow {
+  categoryId: string | null;
+  name: string;
+  unitsSold: number;
+  unitsReturned: number;
+  netUnits: number;
+  netRevenue: string;
+  cogs: string;
+  grossProfit: string;
+}
+
+export interface InventoryTotals {
+  units: number;
+  productsWithStock: number;
+  costValue: string;
+  retailValue: string;
+}
+
+export interface InventoryReport {
+  totals: InventoryTotals;
+  categories: { categoryId: string | null; name: string; units: number; costValue: string; retailValue: string }[];
+  lowStock: LowStockResponse;
+}
+
+export interface Dashboard {
+  period: ReportPeriod;
+  summary: SalesSummary;
+  topProducts: ProductReportRow[];
+  categories: CategoryReportRow[];
+  inventory: InventoryTotals;
+  lowStock: LowStockResponse;
+  pendingPurchases: { awaitingApproval: number; awaitingDelivery: number };
+  recentSales: SaleSummary[];
+}
