@@ -18,6 +18,7 @@ import { PosPage } from './pages/PosPage';
 import { SaleDetailPage } from './pages/SaleDetailPage';
 import { SalesPage } from './pages/SalesPage';
 import { ReturnsPage } from './pages/ReturnsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -47,6 +48,7 @@ export function App() {
               <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
               <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
               <Route path="/returns" element={<ReturnsPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
             </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />

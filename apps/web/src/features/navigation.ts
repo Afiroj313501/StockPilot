@@ -1,5 +1,6 @@
 import {
   Boxes,
+  BarChart3,
   Calculator,
   ClipboardList,
   LayoutDashboard,
@@ -28,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/pos', label: 'Point of sale', icon: Calculator, minRole: 'CASHIER' },
   { to: '/sales', label: 'Sales', icon: Receipt, minRole: 'CASHIER' },
   { to: '/returns', label: 'Returns', icon: RotateCcw, minRole: 'MANAGER' },
+  { to: '/reports', label: 'Reports', icon: BarChart3, minRole: 'MANAGER' },
   { to: '/products', label: 'Products', icon: Boxes, minRole: 'CASHIER' },
   { to: '/categories', label: 'Categories', icon: Tags, minRole: 'MANAGER' },
   { to: '/inventory', label: 'Inventory', icon: ClipboardList, minRole: 'MANAGER' },

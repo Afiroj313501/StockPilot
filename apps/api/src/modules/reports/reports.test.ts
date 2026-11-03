@@ -32,23 +32,45 @@ async function addStock(cookie: string, productId: string, quantity: number) {
   if (res.status !== 201) throw new Error(`addStock failed: ${res.status}`);
 }
 
-async function sell(cookie: string, items: { productId: string; quantity: number }[], at: string, extra: Record<string, unknown> = {}) {
+async function sell(
+  cookie: string,
+  items: { productId: string; quantity: number }[],
+  at: string,
+  extra: Record<string, unknown> = {},
+) {
   const res = await request(app)
     .post('/api/v1/sales')
     .set('Cookie', cookie)
-    .send({ idempotencyKey: nextKey(), items, payment: { method: 'CASH', amountTendered: 1000 }, ...extra });
+    .send({
+      idempotencyKey: nextKey(),
+      items,
+      payment: { method: 'CASH', amountTendered: 1000 },
+      ...extra,
+    });
   if (res.status !== 201) throw new Error(`sale failed: ${res.status} ${JSON.stringify(res.body)}`);
   // Move the sale to a known moment so the tests can check date boundaries.
   await prisma.sale.update({ where: { id: res.body.id }, data: { createdAt: new Date(at) } });
   return res.body as { id: string; total: string };
 }
 
-async function giveBack(cookie: string, saleId: string, productId: string, restock: boolean, reason: string, at: string) {
+async function giveBack(
+  cookie: string,
+  saleId: string,
+  productId: string,
+  restock: boolean,
+  reason: string,
+  at: string,
+) {
   const res = await request(app)
     .post('/api/v1/returns')
     .set('Cookie', cookie)
-    .send({ saleId, idempotencyKey: nextKey(), items: [{ productId, quantity: 1, restock, reason }] });
-  if (res.status !== 201) throw new Error(`return failed: ${res.status} ${JSON.stringify(res.body)}`);
+    .send({
+      saleId,
+      idempotencyKey: nextKey(),
+      items: [{ productId, quantity: 1, restock, reason }],
+    });
+  if (res.status !== 201)
+    throw new Error(`return failed: ${res.status} ${JSON.stringify(res.body)}`);
   await prisma.saleReturn.update({ where: { id: res.body.id }, data: { createdAt: new Date(at) } });
 }
 
@@ -65,21 +87,45 @@ async function fixture() {
   const managerCookie = await loginAs(app, manager.email);
   const cashierCookie = await loginAs(app, cashier.email);
 
-  const set = await patchSettings(owner.cookie, { timeZone: 'Asia/Dhaka', taxName: 'VAT', taxRatePercent: 10 });
+  const set = await patchSettings(owner.cookie, {
+    timeZone: 'Asia/Dhaka',
+    taxName: 'VAT',
+    taxRatePercent: 10,
+  });
   if (set.status !== 200) throw new Error(`settings failed: ${set.status}`);
-  const cat = await request(app).post('/api/v1/categories').set('Cookie', owner.cookie).send({ name: 'Drinks' });
+  const cat = await request(app)
+    .post('/api/v1/categories')
+    .set('Cookie', owner.cookie)
+    .send({ name: 'Drinks' });
   const catId = cat.body.id as string;
 
-  const A = await createProduct(app, owner.cookie, { name: 'Cola', sellingPrice: 10, costPrice: 4, categoryId: catId });
-  const B = await createProduct(app, owner.cookie, { name: 'Chips', sellingPrice: 5, costPrice: 3 });
+  const A = await createProduct(app, owner.cookie, {
+    name: 'Cola',
+    sellingPrice: 10,
+    costPrice: 4,
+    categoryId: catId,
+  });
+  const B = await createProduct(app, owner.cookie, {
+    name: 'Chips',
+    sellingPrice: 5,
+    costPrice: 3,
+  });
   await addStock(owner.cookie, A, 100);
   await addStock(owner.cookie, B, 100);
 
   const s1 = await sell(cashierCookie, [{ productId: A, quantity: 2 }], '2026-10-31T19:00:00Z');
   const s2 = await sell(cashierCookie, [{ productId: B, quantity: 3 }], '2026-11-02T05:00:00Z');
-  await sell(managerCookie, [{ productId: A, quantity: 1 }, { productId: B, quantity: 1 }], '2026-11-03T06:00:00Z', {
-    discount: { type: 'PERCENT', value: 10 },
-  });
+  await sell(
+    managerCookie,
+    [
+      { productId: A, quantity: 1 },
+      { productId: B, quantity: 1 },
+    ],
+    '2026-11-03T06:00:00Z',
+    {
+      discount: { type: 'PERCENT', value: 10 },
+    },
+  );
   await giveBack(managerCookie, s1.id, A, true, 'CHANGED_MIND', '2026-11-03T08:00:00Z');
   await giveBack(managerCookie, s2.id, B, false, 'DAMAGED', '2026-11-03T09:00:00Z');
 
@@ -87,8 +133,13 @@ async function fixture() {
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 
-const get = (cookie: string, path: string) => request(app).get(`/api/v1/reports${path}`).set('Cookie', cookie);
-const csvLines = (text: string) => text.replace(/^\uFEFF/, '').trim().split('\r\n');
+const get = (cookie: string, path: string) =>
+  request(app).get(`/api/v1/reports${path}`).set('Cookie', cookie);
+const csvLines = (text: string) =>
+  text
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .split('\r\n');
 const csvRows = (text: string) => csvLines(text).map((l) => l.split(','));
 
 describe('sales over time', () => {
@@ -96,7 +147,12 @@ describe('sales over time', () => {
     const s = await fixture();
     const res = await get(s.managerCookie, `/summary${RANGE}`);
     expect(res.status).toBe(200);
-    expect(res.body.period).toMatchObject({ from: '2026-11-01', to: '2026-11-03', timeZone: 'Asia/Dhaka', group: 'day' });
+    expect(res.body.period).toMatchObject({
+      from: '2026-11-01',
+      to: '2026-11-03',
+      timeZone: 'Asia/Dhaka',
+      group: 'day',
+    });
     expect(res.body.totals).toEqual({
       salesCount: 3,
       returnsCount: 2,
@@ -112,12 +168,34 @@ describe('sales over time', () => {
     });
 
     const days = res.body.series;
-    expect(days.map((d: { bucket: string }) => d.bucket)).toEqual(['2026-11-01', '2026-11-02', '2026-11-03']);
-    expect(days[0]).toMatchObject({ salesCount: 1, netSales: '20.00', cogs: '8.00', grossProfit: '12.00' });
-    expect(days[1]).toMatchObject({ salesCount: 1, netSales: '15.00', cogs: '9.00', grossProfit: '6.00' });
-    expect(days[2]).toMatchObject({ salesCount: 1, returnsCount: 2, refunds: '16.50', netSales: '-1.50', cogs: '3.00', grossProfit: '-4.50' });
+    expect(days.map((d: { bucket: string }) => d.bucket)).toEqual([
+      '2026-11-01',
+      '2026-11-02',
+      '2026-11-03',
+    ]);
+    expect(days[0]).toMatchObject({
+      salesCount: 1,
+      netSales: '20.00',
+      cogs: '8.00',
+      grossProfit: '12.00',
+    });
+    expect(days[1]).toMatchObject({
+      salesCount: 1,
+      netSales: '15.00',
+      cogs: '9.00',
+      grossProfit: '6.00',
+    });
+    expect(days[2]).toMatchObject({
+      salesCount: 1,
+      returnsCount: 2,
+      refunds: '16.50',
+      netSales: '-1.50',
+      cogs: '3.00',
+      grossProfit: '-4.50',
+    });
 
-    const sum = (key: string) => days.reduce((acc: number, d: Record<string, string>) => acc + cents(d[key]!), 0);
+    const sum = (key: string) =>
+      days.reduce((acc: number, d: Record<string, string>) => acc + cents(d[key]!), 0);
     expect(sum('netSales')).toBe(cents(res.body.totals.netSales));
     expect(sum('grossProfit')).toBe(cents(res.body.totals.grossProfit));
   });
@@ -125,8 +203,14 @@ describe('sales over time', () => {
   it('groups by ISO week (Monday) and by month', async () => {
     const s = await fixture();
     const weeks = await get(s.managerCookie, `/summary${RANGE}&group=week`);
-    expect(weeks.body.series.map((r: { bucket: string }) => r.bucket)).toEqual(['2026-10-26', '2026-11-02']);
-    expect(weeks.body.series.map((r: { netSales: string }) => r.netSales)).toEqual(['20.00', '13.50']);
+    expect(weeks.body.series.map((r: { bucket: string }) => r.bucket)).toEqual([
+      '2026-10-26',
+      '2026-11-02',
+    ]);
+    expect(weeks.body.series.map((r: { netSales: string }) => r.netSales)).toEqual([
+      '20.00',
+      '13.50',
+    ]);
 
     const months = await get(s.managerCookie, `/summary${RANGE}&group=month`);
     expect(months.body.series).toHaveLength(1);
@@ -156,7 +240,11 @@ describe('sales over time', () => {
     const sale = await request(app)
       .post('/api/v1/sales')
       .set('Cookie', owner.cookie)
-      .send({ idempotencyKey: nextKey(), items: [{ productId: free, quantity: 1 }], payment: { method: 'CASH', amountTendered: 5 } });
+      .send({
+        idempotencyKey: nextKey(),
+        items: [{ productId: free, quantity: 1 }],
+        payment: { method: 'CASH', amountTendered: 5 },
+      });
     expect(sale.status).toBe(201);
 
     const res = await get(owner.cookie, '/summary');
@@ -197,11 +285,23 @@ describe('products, categories and inventory', () => {
       cogs: '8.00', // 12.00 sold - 4.00 restocked
       grossProfit: '11.00',
     });
-    expect(byRevenue.body.items[1]).toMatchObject({ unitsSold: 4, unitsReturned: 1, netRevenue: '14.50', cogs: '12.00', grossProfit: '2.50' });
+    expect(byRevenue.body.items[1]).toMatchObject({
+      unitsSold: 4,
+      unitsReturned: 1,
+      netRevenue: '14.50',
+      cogs: '12.00',
+      grossProfit: '2.50',
+    });
 
     const totals = (await get(s.managerCookie, `/summary${RANGE}`)).body.totals;
-    const revenue = byRevenue.body.items.reduce((acc: number, i: { netRevenue: string }) => acc + cents(i.netRevenue), 0);
-    const profit = byRevenue.body.items.reduce((acc: number, i: { grossProfit: string }) => acc + cents(i.grossProfit), 0);
+    const revenue = byRevenue.body.items.reduce(
+      (acc: number, i: { netRevenue: string }) => acc + cents(i.netRevenue),
+      0,
+    );
+    const profit = byRevenue.body.items.reduce(
+      (acc: number, i: { grossProfit: string }) => acc + cents(i.grossProfit),
+      0,
+    );
     expect(revenue).toBe(cents(totals.netSales));
     expect(profit).toBe(cents(totals.grossProfit));
 
@@ -216,10 +316,23 @@ describe('products, categories and inventory', () => {
     const res = await get(s.managerCookie, `/categories${RANGE}`);
     expect(res.status).toBe(200);
     expect(res.body.items).toEqual([
-      expect.objectContaining({ categoryId: s.catId, name: 'Drinks', netRevenue: '19.00', grossProfit: '11.00' }),
-      expect.objectContaining({ categoryId: null, name: 'Uncategorized', netRevenue: '14.50', grossProfit: '2.50' }),
+      expect.objectContaining({
+        categoryId: s.catId,
+        name: 'Drinks',
+        netRevenue: '19.00',
+        grossProfit: '11.00',
+      }),
+      expect.objectContaining({
+        categoryId: null,
+        name: 'Uncategorized',
+        netRevenue: '14.50',
+        grossProfit: '2.50',
+      }),
     ]);
-    const total = res.body.items.reduce((acc: number, i: { netRevenue: string }) => acc + cents(i.netRevenue), 0);
+    const total = res.body.items.reduce(
+      (acc: number, i: { netRevenue: string }) => acc + cents(i.netRevenue),
+      0,
+    );
     expect(total).toBe(3350);
   });
 
@@ -228,10 +341,27 @@ describe('products, categories and inventory', () => {
     // Stock now: Cola 98 (100 - 2 - 1 + 1 restocked), Chips 96 (100 - 3 - 1, damaged return not restocked).
     const res = await get(s.managerCookie, '/inventory');
     expect(res.status).toBe(200);
-    expect(res.body.totals).toEqual({ units: 194, productsWithStock: 2, costValue: '680.00', retailValue: '1460.00' });
+    expect(res.body.totals).toEqual({
+      units: 194,
+      productsWithStock: 2,
+      costValue: '680.00',
+      retailValue: '1460.00',
+    });
     expect(res.body.categories).toEqual([
-      { categoryId: s.catId, name: 'Drinks', units: 98, costValue: '392.00', retailValue: '980.00' },
-      { categoryId: null, name: 'Uncategorized', units: 96, costValue: '288.00', retailValue: '480.00' },
+      {
+        categoryId: s.catId,
+        name: 'Drinks',
+        units: 98,
+        costValue: '392.00',
+        retailValue: '980.00',
+      },
+      {
+        categoryId: null,
+        name: 'Uncategorized',
+        units: 96,
+        costValue: '288.00',
+        retailValue: '480.00',
+      },
     ]);
     expect(res.body.lowStock.total).toBe(0);
 
@@ -272,17 +402,26 @@ describe('dashboard and exports', () => {
     const rows = csvRows(sales.text);
     expect(rows[0]![0]).toBe('Period');
     expect(rows).toHaveLength(5); // header + 3 days + total
-    summary.series.forEach((day: { bucket: string; salesCount: number; netSales: string; grossProfit: string }, i: number) => {
-      expect(rows[i + 1]![0]).toBe(day.bucket);
-      expect(rows[i + 1]![1]).toBe(String(day.salesCount));
-      expect(rows[i + 1]![9]).toBe(day.netSales);
-      expect(rows[i + 1]![11]).toBe(day.grossProfit);
-    });
+    summary.series.forEach(
+      (
+        day: { bucket: string; salesCount: number; netSales: string; grossProfit: string },
+        i: number,
+      ) => {
+        expect(rows[i + 1]![0]).toBe(day.bucket);
+        expect(rows[i + 1]![1]).toBe(String(day.salesCount));
+        expect(rows[i + 1]![9]).toBe(day.netSales);
+        expect(rows[i + 1]![11]).toBe(day.grossProfit);
+      },
+    );
     expect(rows[4]![0]).toBe('Total');
     expect(rows[4]![9]).toBe(summary.totals.netSales);
     expect(rows[4]![11]).toBe(summary.totals.grossProfit);
 
-    const evil = await createProduct(app, s.owner.cookie, { name: '=1+1', sellingPrice: 1, costPrice: 1 });
+    const evil = await createProduct(app, s.owner.cookie, {
+      name: '=1+1',
+      sellingPrice: 1,
+      costPrice: 1,
+    });
     await addStock(s.owner.cookie, evil, 5);
     await sell(s.cashierCookie, [{ productId: evil, quantity: 1 }], '2026-11-02T05:00:00Z');
 
@@ -309,7 +448,15 @@ describe('dashboard and exports', () => {
 describe('access, isolation and validation', () => {
   it('lets managers and owners read reports, and blocks cashiers everywhere', async () => {
     const s = await fixture();
-    const paths = ['/summary', '/products', '/categories', '/inventory', '/dashboard', '/export/sales', '/export/products'];
+    const paths = [
+      '/summary',
+      '/products',
+      '/categories',
+      '/inventory',
+      '/dashboard',
+      '/export/sales',
+      '/export/products',
+    ];
     for (const path of paths) {
       expect((await get(s.cashierCookie, path)).status).toBe(403);
       expect((await get(s.managerCookie, path)).status).toBe(200);
@@ -366,7 +513,14 @@ describe('access, isolation and validation', () => {
   });
 
   it('requires authentication', async () => {
-    for (const path of ['/summary', '/products', '/categories', '/inventory', '/dashboard', '/export/sales']) {
+    for (const path of [
+      '/summary',
+      '/products',
+      '/categories',
+      '/inventory',
+      '/dashboard',
+      '/export/sales',
+    ]) {
       expect((await request(app).get(`/api/v1/reports${path}`)).status).toBe(401);
     }
   });

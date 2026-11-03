@@ -47,7 +47,9 @@ export function useProductReport(range: DateRange | null, sort: 'revenue' | 'uni
   return useQuery({
     queryKey: ['reports', 'products', range, sort],
     queryFn: () =>
-      api<{ period: ReportPeriod; items: ProductReportRow[] }>(`/reports/products${qs(range, { sort, limit: '100' })}`),
+      api<{ period: ReportPeriod; items: ProductReportRow[] }>(
+        `/reports/products${qs(range, { sort, limit: '100' })}`,
+      ),
     placeholderData: keepPreviousData,
     retry: false,
   });
@@ -56,7 +58,8 @@ export function useProductReport(range: DateRange | null, sort: 'revenue' | 'uni
 export function useCategoryReport(range: DateRange | null) {
   return useQuery({
     queryKey: ['reports', 'categories', range],
-    queryFn: () => api<{ period: ReportPeriod; items: CategoryReportRow[] }>(`/reports/categories${qs(range)}`),
+    queryFn: () =>
+      api<{ period: ReportPeriod; items: CategoryReportRow[] }>(`/reports/categories${qs(range)}`),
     placeholderData: keepPreviousData,
     retry: false,
   });

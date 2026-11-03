@@ -23,8 +23,14 @@ export interface Range {
 const D = (v: string | number | null | undefined) => new Prisma.Decimal(v ?? 0);
 const money = (d: Prisma.Decimal) => d.toFixed(2);
 
-export async function loadRange(storeId: string, q: { from?: string | undefined; to?: string | undefined }): Promise<Range> {
-  const setting = await prisma.storeSetting.findUnique({ where: { storeId }, select: { timeZone: true } });
+export async function loadRange(
+  storeId: string,
+  q: { from?: string | undefined; to?: string | undefined },
+): Promise<Range> {
+  const setting = await prisma.storeSetting.findUnique({
+    where: { storeId },
+    select: { timeZone: true },
+  });
   const timeZone = setting?.timeZone ?? 'UTC';
   const today = localToday(timeZone);
   if (q.from && q.to) return { from: q.from, to: q.to, timeZone, today };
@@ -33,7 +39,11 @@ export async function loadRange(storeId: string, q: { from?: string | undefined;
 
 export function assertGroupFits(range: Range, group: Group): void {
   if (group === 'day' && daysBetween(range.from, range.to) + 1 > MAX_DAY_GROUP_DAYS) {
-    throw new AppError(400, 'RANGE_TOO_LONG', `Daily grouping covers at most ${MAX_DAY_GROUP_DAYS} days. Use weeks or months.`);
+    throw new AppError(
+      400,
+      'RANGE_TOO_LONG',
+      `Daily grouping covers at most ${MAX_DAY_GROUP_DAYS} days. Use weeks or months.`,
+    );
   }
 }
 
@@ -50,8 +60,10 @@ function inRange(column: Prisma.Sql, range: Range) {
 // The store-local day, ISO week start (Monday) or month start that a UTC timestamp falls in.
 function bucketSql(column: Prisma.Sql, group: Group, timeZone: string) {
   const local = Prisma.sql`((${column} AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}::text)`;
-  if (group === 'week') return Prisma.sql`to_char(date_trunc('week', ${local})::date, 'YYYY-MM-DD')`;
-  if (group === 'month') return Prisma.sql`to_char(date_trunc('month', ${local})::date, 'YYYY-MM-DD')`;
+  if (group === 'week')
+    return Prisma.sql`to_char(date_trunc('week', ${local})::date, 'YYYY-MM-DD')`;
+  if (group === 'month')
+    return Prisma.sql`to_char(date_trunc('month', ${local})::date, 'YYYY-MM-DD')`;
   return Prisma.sql`to_char(${local}::date, 'YYYY-MM-DD')`;
 }
 
@@ -124,7 +136,16 @@ export async function summaryFor(storeId: string, range: Range, group: Group) {
   const returnWindow = inRange(Prisma.sql`r."createdAt"`, range);
 
   const [sales, returns, soldCost, restocked] = await Promise.all([
-    prisma.$queryRaw<{ bucket: string; sales_count: number; gross: string; discounts: string; tax: string; total: string }[]>(Prisma.sql`
+    prisma.$queryRaw<
+      {
+        bucket: string;
+        sales_count: number;
+        gross: string;
+        discounts: string;
+        tax: string;
+        total: string;
+      }[]
+    >(Prisma.sql`
       SELECT ${salesBucket} AS bucket,
              COUNT(*)::int AS sales_count,
              COALESCE(SUM(s."subtotal"), 0)::text AS gross,
@@ -134,7 +155,9 @@ export async function summaryFor(storeId: string, range: Range, group: Group) {
       FROM sales s
       WHERE s."storeId" = ${storeId} AND s.status = 'COMPLETED' AND ${saleWindow}
       GROUP BY 1`),
-    prisma.$queryRaw<{ bucket: string; returns_count: number; refunds: string; tax_refunds: string }[]>(Prisma.sql`
+    prisma.$queryRaw<
+      { bucket: string; returns_count: number; refunds: string; tax_refunds: string }[]
+    >(Prisma.sql`
       SELECT ${returnBucket} AS bucket,
              COUNT(*)::int AS returns_count,
              COALESCE(SUM(r."refundTotal"), 0)::text AS refunds,
@@ -207,7 +230,10 @@ export async function summaryFor(storeId: string, range: Range, group: Group) {
   };
 }
 
-export async function getSummary(storeId: string, q: { from?: string | undefined; to?: string | undefined; group: Group }) {
+export async function getSummary(
+  storeId: string,
+  q: { from?: string | undefined; to?: string | undefined; group: Group },
+) {
   const range = await loadRange(storeId, q);
   assertGroupFits(range, q.group);
   return summaryFor(storeId, range, q.group);
@@ -217,8 +243,12 @@ export async function getSummary(storeId: string, q: { from?: string | undefined
 
 type Kind = 'product' | 'category';
 
-const keySql = (k: Kind) => (k === 'product' ? Prisma.sql`si."productId"` : Prisma.sql`COALESCE(p."categoryId", 'none')`);
-const labelSql = (k: Kind) => (k === 'product' ? Prisma.sql`MAX(si."productName")` : Prisma.sql`COALESCE(MAX(c."name"), 'Uncategorized')`);
+const keySql = (k: Kind) =>
+  k === 'product' ? Prisma.sql`si."productId"` : Prisma.sql`COALESCE(p."categoryId", 'none')`;
+const labelSql = (k: Kind) =>
+  k === 'product'
+    ? Prisma.sql`MAX(si."productName")`
+    : Prisma.sql`COALESCE(MAX(c."name"), 'Uncategorized')`;
 const skuSql = (k: Kind) => (k === 'product' ? Prisma.sql`MAX(si."productSku")` : Prisma.sql`''`);
 
 interface Fact {
@@ -239,7 +269,9 @@ async function facts(storeId: string, range: Range, kind: Kind): Promise<Fact[]>
   const sku = skuSql(kind);
 
   const [sold, returned] = await Promise.all([
-    prisma.$queryRaw<{ key: string; label: string; sku: string; units: string; revenue: string; cost: string }[]>(Prisma.sql`
+    prisma.$queryRaw<
+      { key: string; label: string; sku: string; units: string; revenue: string; cost: string }[]
+    >(Prisma.sql`
       SELECT ${key} AS key, ${label} AS label, ${sku} AS sku,
              SUM(si.quantity)::text AS units,
              SUM(si."lineTotal" - si."taxShare")::text AS revenue,
@@ -250,7 +282,16 @@ async function facts(storeId: string, range: Range, kind: Kind): Promise<Fact[]>
       LEFT JOIN categories c ON c.id = p."categoryId"
       WHERE s."storeId" = ${storeId} AND s.status = 'COMPLETED' AND ${inRange(Prisma.sql`s."createdAt"`, range)}
       GROUP BY 1`),
-    prisma.$queryRaw<{ key: string; label: string; sku: string; units: string; revenue: string; restocked_cost: string }[]>(Prisma.sql`
+    prisma.$queryRaw<
+      {
+        key: string;
+        label: string;
+        sku: string;
+        units: string;
+        revenue: string;
+        restocked_cost: string;
+      }[]
+    >(Prisma.sql`
       SELECT ${key} AS key, ${label} AS label, ${sku} AS sku,
              SUM(ri.quantity)::text AS units,
              SUM(ri."refundAmount" - ri."taxRefund")::text AS revenue,
@@ -268,7 +309,17 @@ async function facts(storeId: string, range: Range, kind: Kind): Promise<Fact[]>
   const at = (k: string, name: string, s: string) => {
     let f = map.get(k);
     if (!f) {
-      f = { key: k, name, sku: s, unitsSold: 0, unitsReturned: 0, revSold: D(0), revReturned: D(0), costSold: D(0), costRestocked: D(0) };
+      f = {
+        key: k,
+        name,
+        sku: s,
+        unitsSold: 0,
+        unitsReturned: 0,
+        revSold: D(0),
+        revReturned: D(0),
+        costSold: D(0),
+        costRestocked: D(0),
+      };
       map.set(k, f);
     }
     return f;
@@ -301,10 +352,16 @@ function rowOf(f: Fact) {
 
 const byDesc = (a: Prisma.Decimal, b: Prisma.Decimal) => b.comparedTo(a);
 
-export async function productRows(storeId: string, range: Range, sort: 'revenue' | 'units' | 'profit', limit?: number) {
+export async function productRows(
+  storeId: string,
+  range: Range,
+  sort: 'revenue' | 'units' | 'profit',
+  limit?: number,
+) {
   const rows = (await facts(storeId, range, 'product')).map(rowOf);
   rows.sort((a, b) => {
-    const metric = (r: (typeof rows)[number]) => (sort === 'units' ? D(r.f.unitsSold) : sort === 'profit' ? r.profit : r.netRevenue);
+    const metric = (r: (typeof rows)[number]) =>
+      sort === 'units' ? D(r.f.unitsSold) : sort === 'profit' ? r.profit : r.netRevenue;
     return byDesc(metric(a), metric(b)) || a.f.name.localeCompare(b.f.name);
   });
   return (limit ? rows.slice(0, limit) : rows).map((r) => ({
@@ -335,21 +392,45 @@ export async function categoryRows(storeId: string, range: Range) {
   }));
 }
 
-export async function getProductReport(storeId: string, q: { from?: string | undefined; to?: string | undefined; sort: 'revenue' | 'units' | 'profit'; limit: number }) {
+export async function getProductReport(
+  storeId: string,
+  q: {
+    from?: string | undefined;
+    to?: string | undefined;
+    sort: 'revenue' | 'units' | 'profit';
+    limit: number;
+  },
+) {
   const range = await loadRange(storeId, q);
-  return { period: { from: range.from, to: range.to, timeZone: range.timeZone, today: range.today }, items: await productRows(storeId, range, q.sort, q.limit) };
+  return {
+    period: { from: range.from, to: range.to, timeZone: range.timeZone, today: range.today },
+    items: await productRows(storeId, range, q.sort, q.limit),
+  };
 }
 
-export async function getCategoryReport(storeId: string, q: { from?: string | undefined; to?: string | undefined }) {
+export async function getCategoryReport(
+  storeId: string,
+  q: { from?: string | undefined; to?: string | undefined },
+) {
   const range = await loadRange(storeId, q);
-  return { period: { from: range.from, to: range.to, timeZone: range.timeZone, today: range.today }, items: await categoryRows(storeId, range) };
+  return {
+    period: { from: range.from, to: range.to, timeZone: range.timeZone, today: range.today },
+    items: await categoryRows(storeId, range),
+  };
 }
 
 // ---- Inventory valuation -----------------------------------------------------------------
 
 export async function inventoryReport(storeId: string) {
   const rows = await prisma.$queryRaw<
-    { key: string; name: string; units: string; products_with_stock: number; cost_value: string; retail_value: string }[]
+    {
+      key: string;
+      name: string;
+      units: string;
+      products_with_stock: number;
+      cost_value: string;
+      retail_value: string;
+    }[]
   >(Prisma.sql`
     SELECT COALESCE(p."categoryId", 'none') AS key,
            COALESCE(MAX(c."name"), 'Uncategorized') AS name,
@@ -385,7 +466,12 @@ export async function inventoryReport(storeId: string) {
     .map(({ sortValue: _unused, ...rest }) => rest);
 
   return {
-    totals: { units, productsWithStock: withStock, costValue: money(cost), retailValue: money(retail) },
+    totals: {
+      units,
+      productsWithStock: withStock,
+      costValue: money(cost),
+      retailValue: money(retail),
+    },
     categories,
     lowStock: await listLowStock(storeId, { limit: 50 }),
   };
@@ -402,15 +488,18 @@ export async function getDashboard(
   const range = await loadRange(storeId, q);
   assertGroupFits(range, 'day');
 
-  const [summary, topProducts, categories, inventory, awaitingApproval, awaitingDelivery, recent] = await Promise.all([
-    summaryFor(storeId, range, 'day'),
-    productRows(storeId, range, 'revenue', 5),
-    categoryRows(storeId, range),
-    inventoryReport(storeId),
-    prisma.purchaseOrder.count({ where: { storeId, status: 'SUBMITTED' } }),
-    prisma.purchaseOrder.count({ where: { storeId, status: { in: ['APPROVED', 'PARTIALLY_RECEIVED'] } } }),
-    listSales(storeId, role, userId, { page: 1, pageSize: 5 }),
-  ]);
+  const [summary, topProducts, categories, inventory, awaitingApproval, awaitingDelivery, recent] =
+    await Promise.all([
+      summaryFor(storeId, range, 'day'),
+      productRows(storeId, range, 'revenue', 5),
+      categoryRows(storeId, range),
+      inventoryReport(storeId),
+      prisma.purchaseOrder.count({ where: { storeId, status: 'SUBMITTED' } }),
+      prisma.purchaseOrder.count({
+        where: { storeId, status: { in: ['APPROVED', 'PARTIALLY_RECEIVED'] } },
+      }),
+      listSales(storeId, role, userId, { page: 1, pageSize: 5 }),
+    ]);
 
   return {
     period: summary.period,

@@ -30,13 +30,36 @@ export async function buildExport(
       assertGroupFits(range, group);
       const s = await summaryFor(storeId, range, group);
       const line = (label: Cell, m: typeof s.totals): Cell[] => [
-        label, n(m.salesCount), n(m.returnsCount), n(m.grossSales), n(m.discounts), n(m.taxCollected),
-        n(m.salesTotal), n(m.refunds), n(m.taxRefunded), n(m.netSales), n(m.cogs), n(m.grossProfit),
+        label,
+        n(m.salesCount),
+        n(m.returnsCount),
+        n(m.grossSales),
+        n(m.discounts),
+        n(m.taxCollected),
+        n(m.salesTotal),
+        n(m.refunds),
+        n(m.taxRefunded),
+        n(m.netSales),
+        n(m.cogs),
+        n(m.grossProfit),
       ];
       return {
         filename: `sales-${span}.csv`,
         csv: toCsv(
-          ['Period', 'Sales', 'Returns', 'Gross sales', 'Discounts', 'Tax collected', 'Sales total', 'Refunds', 'Tax refunded', 'Net sales (ex tax)', 'Cost of goods sold', 'Gross profit (estimate)'],
+          [
+            'Period',
+            'Sales',
+            'Returns',
+            'Gross sales',
+            'Discounts',
+            'Tax collected',
+            'Sales total',
+            'Refunds',
+            'Tax refunded',
+            'Net sales (ex tax)',
+            'Cost of goods sold',
+            'Gross profit (estimate)',
+          ],
           [...s.series.map((r) => line(n(r.bucket), r)), line('Total', s.totals)],
         ),
       };
@@ -47,8 +70,26 @@ export async function buildExport(
       return {
         filename: `products-${span}.csv`,
         csv: toCsv(
-          ['Product', 'SKU', 'Units sold', 'Units returned', 'Net units', 'Net revenue (ex tax)', 'Cost of goods sold', 'Gross profit (estimate)'],
-          rows.map((r) => [r.name, r.sku, n(r.unitsSold), n(r.unitsReturned), n(r.netUnits), n(r.netRevenue), n(r.cogs), n(r.grossProfit)]),
+          [
+            'Product',
+            'SKU',
+            'Units sold',
+            'Units returned',
+            'Net units',
+            'Net revenue (ex tax)',
+            'Cost of goods sold',
+            'Gross profit (estimate)',
+          ],
+          rows.map((r) => [
+            r.name,
+            r.sku,
+            n(r.unitsSold),
+            n(r.unitsReturned),
+            n(r.netUnits),
+            n(r.netRevenue),
+            n(r.cogs),
+            n(r.grossProfit),
+          ]),
         ),
       };
     }
@@ -58,8 +99,24 @@ export async function buildExport(
       return {
         filename: `categories-${span}.csv`,
         csv: toCsv(
-          ['Category', 'Units sold', 'Units returned', 'Net units', 'Net revenue (ex tax)', 'Cost of goods sold', 'Gross profit (estimate)'],
-          rows.map((r) => [r.name, n(r.unitsSold), n(r.unitsReturned), n(r.netUnits), n(r.netRevenue), n(r.cogs), n(r.grossProfit)]),
+          [
+            'Category',
+            'Units sold',
+            'Units returned',
+            'Net units',
+            'Net revenue (ex tax)',
+            'Cost of goods sold',
+            'Gross profit (estimate)',
+          ],
+          rows.map((r) => [
+            r.name,
+            n(r.unitsSold),
+            n(r.unitsReturned),
+            n(r.netUnits),
+            n(r.netRevenue),
+            n(r.cogs),
+            n(r.grossProfit),
+          ]),
         ),
       };
     }
@@ -71,8 +128,20 @@ export async function buildExport(
         csv: toCsv(
           ['Category', 'Units in stock', 'Products with stock', 'Cost value', 'Retail value'],
           [
-            ...inv.categories.map((c): Cell[] => [c.name, n(c.units), n(''), n(c.costValue), n(c.retailValue)]),
-            ['Total', n(inv.totals.units), n(inv.totals.productsWithStock), n(inv.totals.costValue), n(inv.totals.retailValue)],
+            ...inv.categories.map((c): Cell[] => [
+              c.name,
+              n(c.units),
+              n(''),
+              n(c.costValue),
+              n(c.retailValue),
+            ]),
+            [
+              'Total',
+              n(inv.totals.units),
+              n(inv.totals.productsWithStock),
+              n(inv.totals.costValue),
+              n(inv.totals.retailValue),
+            ],
           ],
         ),
       };
@@ -94,7 +163,12 @@ export async function buildExport(
       const items = await prisma.saleReturnItem.findMany({
         where: { saleReturn: { storeId, createdAt: { gte: start, lt: end } } },
         include: {
-          saleReturn: { include: { sale: { select: { number: true } }, processedBy: { select: { name: true } } } },
+          saleReturn: {
+            include: {
+              sale: { select: { number: true } },
+              processedBy: { select: { name: true } },
+            },
+          },
           saleItem: { select: { productName: true, productSku: true } },
         },
         orderBy: [{ saleReturn: { createdAt: 'asc' } }, { id: 'asc' }],
@@ -103,7 +177,19 @@ export async function buildExport(
       return {
         filename: `returns-${span}.csv`,
         csv: toCsv(
-          ['Return', 'Sale', 'Date', 'Processed by', 'Product', 'SKU', 'Units', 'Reason', 'Restocked', 'Refund', 'Tax in refund'],
+          [
+            'Return',
+            'Sale',
+            'Date',
+            'Processed by',
+            'Product',
+            'SKU',
+            'Units',
+            'Reason',
+            'Restocked',
+            'Refund',
+            'Tax in refund',
+          ],
           items.map((i) => [
             `R-${String(i.saleReturn.number).padStart(6, '0')}`,
             `S-${String(i.saleReturn.sale.number).padStart(6, '0')}`,
@@ -125,7 +211,10 @@ export async function buildExport(
       const { start, end } = rangeToUtc(range.from, range.to, range.timeZone);
       const orders = await prisma.purchaseOrder.findMany({
         where: { storeId, createdAt: { gte: start, lt: end } },
-        include: { supplier: { select: { name: true } }, items: { select: { quantityOrdered: true, unitCost: true } } },
+        include: {
+          supplier: { select: { name: true } },
+          items: { select: { quantityOrdered: true, unitCost: true } },
+        },
         orderBy: { number: 'asc' },
         take: MAX_ROWS,
       });
@@ -140,7 +229,14 @@ export async function buildExport(
             formatLocalDateTime(o.createdAt, range.timeZone),
             o.expectedDate ? o.expectedDate.toISOString().slice(0, 10) : '',
             n(o.items.length),
-            n(o.items.reduce((sum, i) => sum.plus(i.unitCost.times(i.quantityOrdered)), new Prisma.Decimal(0)).toFixed(2)),
+            n(
+              o.items
+                .reduce(
+                  (sum, i) => sum.plus(i.unitCost.times(i.quantityOrdered)),
+                  new Prisma.Decimal(0),
+                )
+                .toFixed(2),
+            ),
           ]),
         ),
       };

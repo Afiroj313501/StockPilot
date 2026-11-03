@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { addDays, firstOfMonth } from '../../lib/dates';
+import { addDays, firstOfMonth } from '../../lib/date';
 import type { ReportPeriod } from '../../types/api';
 import type { DateRange } from './hooks';
 
@@ -42,18 +42,32 @@ export function DateRangeBar({ period, onChange }: Props) {
           <label htmlFor="range-from" className="block text-sm font-medium text-navy-900">
             From
           </label>
-          <input id="range-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`${inputClass} mt-1`} />
+          <input
+            id="range-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className={`${inputClass} mt-1`}
+          />
         </div>
         <div>
           <label htmlFor="range-to" className="block text-sm font-medium text-navy-900">
             To
           </label>
-          <input id="range-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`${inputClass} mt-1`} />
+          <input
+            id="range-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className={`${inputClass} mt-1`}
+          />
         </div>
         <Button disabled={invalid} onClick={() => onChange({ from, to })}>
           Apply
         </Button>
-        {period && <span className="pb-2 text-xs text-slate-500">Dates are in {period.timeZone}.</span>}
+        {period && (
+          <span className="pb-2 text-xs text-slate-500">Dates are in {period.timeZone}.</span>
+        )}
       </div>
       {from !== '' && to !== '' && from > to && (
         <p role="alert" className="text-sm text-red-600">
@@ -66,7 +80,11 @@ export function DateRangeBar({ period, onChange }: Props) {
             <button
               key={p.label}
               type="button"
-              onClick={() => onChange(p.range)}
+              onClick={() => {
+                setFrom(p.range.from);
+                setTo(p.range.to);
+                onChange(p.range);
+              }}
               className="rounded-full bg-white px-3 py-1 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
             >
               {p.label}

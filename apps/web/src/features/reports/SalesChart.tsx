@@ -26,8 +26,15 @@ export function SalesChart({ series, currency, title }: Props) {
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="bucket" tick={{ fontSize: 11 }} minTickGap={16} />
-            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => compact.format(v)} width={48} />
-            <Tooltip formatter={(value) => formatMoney(String(value), currency)} labelFormatter={(label) => String(label)} />
+            <YAxis
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v: number) => compact.format(v)}
+              width={48}
+            />
+            <Tooltip
+              formatter={(value) => formatMoney(String(value), currency)}
+              labelFormatter={(label) => String(label)}
+            />
             <Bar dataKey="net" name="Net sales" fill="#2563eb" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -38,15 +45,23 @@ export function SalesChart({ series, currency, title }: Props) {
           <table className="min-w-full text-left">
             <thead className="text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th scope="col" className="py-1 pr-4 font-medium">Period</th>
-                <th scope="col" className="py-1 pr-4 text-right font-medium">Sales</th>
-                <th scope="col" className="py-1 text-right font-medium">Net sales</th>
+                <th scope="col" className="py-1 pr-4 font-medium">
+                  Period
+                </th>
+                <th scope="col" className="py-1 pr-4 text-right font-medium">
+                  Sales
+                </th>
+                <th scope="col" className="py-1 text-right font-medium">
+                  Net sales
+                </th>
               </tr>
             </thead>
             <tbody>
               {series.map((s) => (
                 <tr key={s.bucket}>
-                  <th scope="row" className="py-1 pr-4 font-normal">{s.bucket}</th>
+                  <th scope="row" className="py-1 pr-4 font-normal">
+                    {s.bucket}
+                  </th>
                   <td className="py-1 pr-4 text-right">{s.salesCount}</td>
                   <td className="py-1 text-right">{formatMoney(s.netSales, currency)}</td>
                 </tr>

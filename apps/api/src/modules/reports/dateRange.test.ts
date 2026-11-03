@@ -12,16 +12,26 @@ import {
 
 describe('startOfLocalDay', () => {
   it('converts a local midnight to UTC', () => {
-    expect(startOfLocalDay('2026-11-01', 'Asia/Dhaka').toISOString()).toBe('2026-10-31T18:00:00.000Z');
+    expect(startOfLocalDay('2026-11-01', 'Asia/Dhaka').toISOString()).toBe(
+      '2026-10-31T18:00:00.000Z',
+    );
     expect(startOfLocalDay('2026-11-01', 'UTC').toISOString()).toBe('2026-11-01T00:00:00.000Z');
   });
 
   it('follows daylight saving changes', () => {
     // US clocks go forward on 2026-03-08 and back on 2026-11-01.
-    expect(startOfLocalDay('2026-03-08', 'America/New_York').toISOString()).toBe('2026-03-08T05:00:00.000Z');
-    expect(startOfLocalDay('2026-03-09', 'America/New_York').toISOString()).toBe('2026-03-09T04:00:00.000Z');
-    expect(startOfLocalDay('2026-11-01', 'America/New_York').toISOString()).toBe('2026-11-01T04:00:00.000Z');
-    expect(startOfLocalDay('2026-11-02', 'America/New_York').toISOString()).toBe('2026-11-02T05:00:00.000Z');
+    expect(startOfLocalDay('2026-03-08', 'America/New_York').toISOString()).toBe(
+      '2026-03-08T05:00:00.000Z',
+    );
+    expect(startOfLocalDay('2026-03-09', 'America/New_York').toISOString()).toBe(
+      '2026-03-09T04:00:00.000Z',
+    );
+    expect(startOfLocalDay('2026-11-01', 'America/New_York').toISOString()).toBe(
+      '2026-11-01T04:00:00.000Z',
+    );
+    expect(startOfLocalDay('2026-11-02', 'America/New_York').toISOString()).toBe(
+      '2026-11-02T05:00:00.000Z',
+    );
   });
 });
 

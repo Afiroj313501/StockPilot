@@ -356,7 +356,6 @@ export interface CreateReturnPayload {
   items: { productId: string; quantity: number; restock: boolean; reason: ReturnReason }[];
 }
 
-
 export interface ReportPeriod {
   from: string;
   to: string;
@@ -418,7 +417,13 @@ export interface InventoryTotals {
 
 export interface InventoryReport {
   totals: InventoryTotals;
-  categories: { categoryId: string | null; name: string; units: number; costValue: string; retailValue: string }[];
+  categories: {
+    categoryId: string | null;
+    name: string;
+    units: number;
+    costValue: string;
+    retailValue: string;
+  }[];
   lowStock: LowStockResponse;
 }
 

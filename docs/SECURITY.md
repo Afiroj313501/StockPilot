@@ -85,3 +85,11 @@ Reporting procedure and known limitations are added in Phase 13.
   calculated by the server from the sale's saved figures.
 - A row lock on the sale plus idempotency keys prevent over-returning and double refunds (covered by
   concurrency tests). Damaged items cannot be restocked through the API.
+
+## Reports and exports (chunk 15)
+
+- All report and export endpoints require MANAGER or OWNER and a verified store context (checked
+  before validation or database access); cashiers get 403. Every query is scoped by storeId.
+- Report queries use parameterised SQL only; the time zone and dates are bound parameters.
+- CSV exports neutralise spreadsheet formulas in text cells. Known gap: exports are not audit-logged
+  until Phase 12.

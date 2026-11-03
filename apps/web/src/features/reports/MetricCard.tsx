@@ -1,6 +1,14 @@
 import type { ReactNode } from 'react';
 
-export function MetricCard({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function MetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+}) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
       <p className="text-sm text-slate-600">{label}</p>

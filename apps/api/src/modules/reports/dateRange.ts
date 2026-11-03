@@ -34,7 +34,14 @@ function parts(date: Date, timeZone: string) {
     second: '2-digit',
   }).formatToParts(date);
   const get = (type: string) => Number(formatted.find((p) => p.type === type)?.value);
-  return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour'), minute: get('minute'), second: get('second') };
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    minute: get('minute'),
+    second: get('second'),
+  };
 }
 
 // The store-local calendar date right now, as YYYY-MM-DD.

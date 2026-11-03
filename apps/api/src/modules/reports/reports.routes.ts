@@ -12,7 +12,13 @@ import {
   rangeQuery,
   summaryQuery,
 } from './reports.schemas';
-import { getCategoryReport, getDashboard, getProductReport, getSummary, inventoryReport } from './reports.service';
+import {
+  getCategoryReport,
+  getDashboard,
+  getProductReport,
+  getSummary,
+  inventoryReport,
+} from './reports.service';
 
 export const reportsRouter = Router();
 
@@ -51,7 +57,14 @@ reportsRouter.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
     const store = getStore(res);
-    res.json(await getDashboard(store.storeId, store.role, getAuth(res).user.id, dashboardQuery.parse(req.query)));
+    res.json(
+      await getDashboard(
+        store.storeId,
+        store.role,
+        getAuth(res).user.id,
+        dashboardQuery.parse(req.query),
+      ),
+    );
   }),
 );
 
@@ -59,7 +72,11 @@ reportsRouter.get(
   '/export/:kind',
   asyncHandler(async (req, res) => {
     const kind = exportKindParam.parse(req.params.kind);
-    const { filename, csv } = await buildExport(getStore(res).storeId, kind, exportQuery.parse(req.query));
+    const { filename, csv } = await buildExport(
+      getStore(res).storeId,
+      kind,
+      exportQuery.parse(req.query),
+    );
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-store');

@@ -1,16 +1,34 @@
 import { z } from 'zod';
-import { daysBetween, isValidDate, MAX_DAY_GROUP_DAYS, MAX_RANGE_DAYS, type Group } from './dateRange';
+import {
+  daysBetween,
+  isValidDate,
+  MAX_DAY_GROUP_DAYS,
+  MAX_RANGE_DAYS,
+  type Group,
+} from './dateRange';
 
-export const EXPORT_KINDS = ['sales', 'products', 'categories', 'inventory', 'low-stock', 'returns', 'purchases'] as const;
+export const EXPORT_KINDS = [
+  'sales',
+  'products',
+  'categories',
+  'inventory',
+  'low-stock',
+  'returns',
+  'purchases',
+] as const;
 
 const dateString = z.string().refine(isValidDate, 'Use a real date like 2026-11-01');
 const base = { from: dateString.optional(), to: dateString.optional() };
 const groupSchema = z.enum(['day', 'week', 'month']);
 
 // Both dates or neither (neither means "the last 30 days").
-function checkRange(v: { from?: string | undefined; to?: string | undefined; group?: Group | undefined }, ctx: z.RefinementCtx) {
+function checkRange(
+  v: { from?: string | undefined; to?: string | undefined; group?: Group | undefined },
+  ctx: z.RefinementCtx,
+) {
   const issue = (message: string) => ctx.addIssue({ code: 'custom', path: ['from'], message });
-  if ((v.from === undefined) !== (v.to === undefined)) return issue('Provide both from and to, or neither');
+  if ((v.from === undefined) !== (v.to === undefined))
+    return issue('Provide both from and to, or neither');
   if (v.from === undefined || v.to === undefined) return;
   if (v.from > v.to) return issue('From must not be after to');
   const days = daysBetween(v.from, v.to) + 1;
@@ -35,7 +53,9 @@ export const productsQuery = z
 export const rangeQuery = z.object(base).superRefine((v, ctx) => checkRange(v, ctx));
 
 // The dashboard always shows days.
-export const dashboardQuery = z.object(base).superRefine((v, ctx) => checkRange({ ...v, group: 'day' }, ctx));
+export const dashboardQuery = z
+  .object(base)
+  .superRefine((v, ctx) => checkRange({ ...v, group: 'day' }, ctx));
 
 export const exportQuery = z
   .object({ ...base, group: groupSchema.optional() })
