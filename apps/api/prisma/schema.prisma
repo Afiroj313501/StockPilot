@@ -50,6 +50,7 @@ model User {
   receivedReceipts PurchaseReceipt[]
   sales Sale[]
   processedReturns SaleReturn[]
+  reorderReviews ReorderReview[]
 
   @@map("users")
 }
@@ -73,6 +74,7 @@ model Store {
   nextSaleNumber Int       @default(1)
   saleReturns      SaleReturn[]
   nextReturnNumber Int          @default(1)
+  reorderReviews ReorderReview[]
   nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
@@ -171,6 +173,7 @@ model Product {
   receiptItems PurchaseReceiptItem[]
   saleItems SaleItem[]
   returnItems SaleReturnItem[]
+  reorderReviews ReorderReview[]
 
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
@@ -224,6 +227,7 @@ model PurchaseOrder {
   approvedBy User?               @relation("PurchaseApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
   items      PurchaseOrderItem[]
   receipts   PurchaseReceipt[]
+  reorderReviews ReorderReview[]
 
   @@unique([storeId, number])
   @@index([storeId, status])
@@ -450,4 +454,34 @@ model SaleReturnItem {
   @@index([saleItemId])
   @@index([productId])
   @@map("sale_return_items")
+}
+
+enum ReorderReviewStatus {
+  DISMISSED
+  REVIEWED
+  ORDERED
+}
+
+model ReorderReview {
+  id                  String              @id @default(uuid())
+  storeId             String
+  productId           String
+  status              ReorderReviewStatus
+  recommendedQuantity Int?
+  orderedQuantity     Int?
+  purchaseOrderId     String?
+  note                String?
+  snapshot            Json // the full recommendation (inputs and steps) at the time of the decision
+  actorUserId         String
+  idempotencyKey      String?
+  createdAt           DateTime            @default(now())
+
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  actor         User           @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@unique([storeId, idempotencyKey])
+  @@index([storeId, productId, createdAt])
+  @@map("reorder_reviews")
 }

@@ -52,7 +52,7 @@ export function assertGroupFits(range: Range, group: Group): void {
 // createdAt columns hold UTC wall-clock time, so the window is passed as UTC wall-clock text.
 const ts = (d: Date) => d.toISOString().replace('T', ' ').replace('Z', '');
 
-function inRange(column: Prisma.Sql, range: Range) {
+export function inRange(column: Prisma.Sql, range: Range) {
   const { start, end } = rangeToUtc(range.from, range.to, range.timeZone);
   return Prisma.sql`${column} >= ${ts(start)}::timestamp AND ${column} < ${ts(end)}::timestamp`;
 }

@@ -171,47 +171,47 @@ export function getPurchase(storeId: string, id: string) {
   return loadDetail(prisma, storeId, id);
 }
 
-export async function createPurchase(
+// The body of createPurchase, usable inside a caller's transaction (for example the reorder planner).
+export async function createPurchaseIn(
+  tx: Prisma.TransactionClient,
   storeId: string,
   actorUserId: string,
   input: CreatePurchaseInput,
 ) {
-  return prisma.$transaction(async (tx) => {
-    await assertSupplier(tx, storeId, input.supplierId);
-    await assertProducts(
-      tx,
-      storeId,
-      input.items.map((i) => i.productId),
-    );
+  await assertSupplier(tx, storeId, input.supplierId);
+  await assertProducts(tx, storeId, input.items.map((i) => i.productId));
 
-    // The UPDATE locks the counter row, so concurrent creates get distinct numbers.
-    // If anything below fails, the whole transaction (and the increment) rolls back.
-    const counter = await tx.store.update({
-      where: { id: storeId },
-      data: { nextPurchaseNumber: { increment: 1 } },
-      select: { nextPurchaseNumber: true },
-    });
-
-    const order = await tx.purchaseOrder.create({
-      data: {
-        storeId,
-        supplierId: input.supplierId,
-        number: counter.nextPurchaseNumber - 1,
-        notes: input.notes ?? null,
-        expectedDate: toDate(input.expectedDate),
-        createdById: actorUserId,
-        items: {
-          create: input.items.map((i) => ({
-            productId: i.productId,
-            quantityOrdered: i.quantityOrdered,
-            unitCost: toDecimal(i.unitCost),
-          })),
-        },
-      },
-      include: detailInclude,
-    });
-    return toDetail(order);
+  // The UPDATE locks the counter row, so concurrent creates get distinct numbers.
+  // If anything below fails, the whole transaction (and the increment) rolls back.
+  const counter = await tx.store.update({
+    where: { id: storeId },
+    data: { nextPurchaseNumber: { increment: 1 } },
+    select: { nextPurchaseNumber: true },
   });
+
+  const order = await tx.purchaseOrder.create({
+    data: {
+      storeId,
+      supplierId: input.supplierId,
+      number: counter.nextPurchaseNumber - 1,
+      notes: input.notes ?? null,
+      expectedDate: toDate(input.expectedDate),
+      createdById: actorUserId,
+      items: {
+        create: input.items.map((i) => ({
+          productId: i.productId,
+          quantityOrdered: i.quantityOrdered,
+          unitCost: toDecimal(i.unitCost),
+        })),
+      },
+    },
+    include: detailInclude,
+  });
+  return toDetail(order);
+}
+
+export function createPurchase(storeId: string, actorUserId: string, input: CreatePurchaseInput) {
+  return prisma.$transaction((tx) => createPurchaseIn(tx, storeId, actorUserId, input));
 }
 
 export async function updatePurchase(storeId: string, id: string, input: UpdatePurchaseInput) {
