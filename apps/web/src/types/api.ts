@@ -200,6 +200,76 @@ export interface ReceivePayload {
   items: { productId: string; quantity: number }[];
 }
 
+export type Confidence = 'INSUFFICIENT' | 'LOW' | 'MEDIUM' | 'HIGH';
+export type Urgency = 'CRITICAL' | 'HIGH' | 'NONE';
+
+export interface ReorderParams {
+  windowDays: number;
+  safetyDays: number;
+  coverageDays: number;
+}
+
+export interface ReorderItem {
+  productId: string;
+  name: string;
+  sku: string;
+  unit: string | null;
+  status: 'REORDER' | 'OK' | 'INSUFFICIENT_DATA';
+  confidence: Confidence;
+  urgency: Urgency;
+  lowStock: boolean;
+  currentStock: number;
+  incomingStock: number;
+  pendingOrderQuantity: number;
+  position: number;
+  supplier: { id: string; name: string; isActive: boolean } | null;
+  leadTimeDays: number;
+  leadTimeSource: 'SUPPLIER' | 'STORE_DEFAULT';
+  safetyDays: number;
+  coverageDays: number;
+  inputs: {
+    windowStart: string;
+    windowEnd: string;
+    observedDays: number;
+    unitsSold: number;
+    unitsReturned: number;
+    eligibleUnits: number;
+    transactions: number;
+    lowStockThreshold: number;
+  };
+  averageDailyDemand: string;
+  leadTimeDemand: number;
+  safetyStock: number;
+  coverageStock: number;
+  reorderPoint: number;
+  orderUpToLevel: number;
+  daysOfCover: string | null;
+  recommendedQuantity: number | null;
+  unitCost: string;
+  estimatedCost: string | null;
+  reviewState: {
+    status: 'DISMISSED' | 'REVIEWED' | 'ORDERED';
+    createdAt: string;
+    purchaseOrderId: string | null;
+  } | null;
+  steps: string[];
+}
+
+export interface ReorderResponse {
+  today: string;
+  timeZone: string;
+  params: ReorderParams;
+  counts: { evaluated: number; reorder: number; insufficientLowStock: number; handled: number };
+  items: ReorderItem[];
+}
+
+export interface CreateDraftPayload {
+  idempotencyKey: string;
+  quantity: number;
+  supplierId: string;
+  params: ReorderParams;
+}
+
 export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE' | 'OTHER';
 
 export interface SaleLine {

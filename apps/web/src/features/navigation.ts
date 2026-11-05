@@ -10,6 +10,7 @@ import {
   Settings,
   Tags,
   Truck,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '../types/api';
@@ -33,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/products', label: 'Products', icon: Boxes, minRole: 'CASHIER' },
   { to: '/categories', label: 'Categories', icon: Tags, minRole: 'MANAGER' },
   { to: '/inventory', label: 'Inventory', icon: ClipboardList, minRole: 'MANAGER' },
+  { to: '/reorder', label: 'Reorder planner', icon: TrendingUp, minRole: 'MANAGER' },
   { to: '/suppliers', label: 'Suppliers', icon: Truck, minRole: 'MANAGER' },
   { to: '/purchases', label: 'Purchases', icon: ShoppingCart, minRole: 'MANAGER' },
   { to: '/settings', label: 'Settings', icon: Settings, minRole: 'OWNER' },

@@ -179,7 +179,11 @@ export async function createPurchaseIn(
   input: CreatePurchaseInput,
 ) {
   await assertSupplier(tx, storeId, input.supplierId);
-  await assertProducts(tx, storeId, input.items.map((i) => i.productId));
+  await assertProducts(
+    tx,
+    storeId,
+    input.items.map((i) => i.productId),
+  );
 
   // The UPDATE locks the counter row, so concurrent creates get distinct numbers.
   // If anything below fails, the whole transaction (and the increment) rolls back.

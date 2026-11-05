@@ -35,7 +35,11 @@ describe('buildPlan', () => {
 
   it('marks it critical when stock runs out before a new order could arrive, and not above the reorder point', () => {
     const critical = buildPlan({ ...base, currentStock: 8 }); // 8 units last 5.7 days, lead time 7
-    expect(critical).toMatchObject({ status: 'REORDER', urgency: 'CRITICAL', recommendedQuantity: 27 });
+    expect(critical).toMatchObject({
+      status: 'REORDER',
+      urgency: 'CRITICAL',
+      recommendedQuantity: 27,
+    });
 
     const fine = buildPlan({ ...base, currentStock: 20 });
     expect(fine).toMatchObject({ status: 'OK', urgency: 'NONE', recommendedQuantity: 0 });
@@ -62,7 +66,11 @@ describe('buildPlan', () => {
     expect(young.steps.join(' ')).toContain('not enough history');
 
     const quiet = buildPlan({ ...base, transactions: 2, currentStock: 50 });
-    expect(quiet).toMatchObject({ status: 'INSUFFICIENT_DATA', recommendedQuantity: null, lowStock: false });
+    expect(quiet).toMatchObject({
+      status: 'INSUFFICIENT_DATA',
+      recommendedQuantity: null,
+      lowStock: false,
+    });
   });
 
   it('grades confidence by days observed and sales count', () => {
@@ -78,10 +86,21 @@ describe('buildPlan', () => {
 
   it('handles zero demand and zero or negative stock', () => {
     const none = buildPlan({ ...base, eligibleUnits: 0, currentStock: 0 });
-    expect(none).toMatchObject({ status: 'OK', averageDailyDemand: '0.00', reorderPoint: 0, daysOfCover: null, recommendedQuantity: 0 });
+    expect(none).toMatchObject({
+      status: 'OK',
+      averageDailyDemand: '0.00',
+      reorderPoint: 0,
+      daysOfCover: null,
+      recommendedQuantity: 0,
+    });
 
     const empty = buildPlan({ ...base, eligibleUnits: 30, currentStock: 0 });
-    expect(empty).toMatchObject({ status: 'REORDER', urgency: 'CRITICAL', recommendedQuantity: 24, daysOfCover: '0.0' });
+    expect(empty).toMatchObject({
+      status: 'REORDER',
+      urgency: 'CRITICAL',
+      recommendedQuantity: 24,
+      daysOfCover: '0.0',
+    });
 
     const negative = buildPlan({ ...base, eligibleUnits: 30, currentStock: -3 });
     expect(negative).toMatchObject({ urgency: 'CRITICAL', position: -3, recommendedQuantity: 27 });
@@ -89,10 +108,22 @@ describe('buildPlan', () => {
 
   it('rounds each component up and handles zero coverage days', () => {
     const tiny = buildPlan({ ...base, eligibleUnits: 1 });
-    expect(tiny).toMatchObject({ leadTimeDemand: 1, safetyStock: 1, coverageStock: 1, reorderPoint: 2, orderUpToLevel: 3 });
+    expect(tiny).toMatchObject({
+      leadTimeDemand: 1,
+      safetyStock: 1,
+      coverageStock: 1,
+      reorderPoint: 2,
+      orderUpToLevel: 3,
+    });
 
     const noCoverage = { ...base, eligibleUnits: 30, coverageDays: 0 }; // reorder point = order-up-to = 10
-    expect(buildPlan({ ...noCoverage, currentStock: 10 })).toMatchObject({ status: 'OK', recommendedQuantity: 0 });
-    expect(buildPlan({ ...noCoverage, currentStock: 9 })).toMatchObject({ status: 'REORDER', recommendedQuantity: 1 });
+    expect(buildPlan({ ...noCoverage, currentStock: 10 })).toMatchObject({
+      status: 'OK',
+      recommendedQuantity: 0,
+    });
+    expect(buildPlan({ ...noCoverage, currentStock: 9 })).toMatchObject({
+      status: 'REORDER',
+      recommendedQuantity: 1,
+    });
   });
 });

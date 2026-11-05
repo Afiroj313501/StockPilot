@@ -20,6 +20,7 @@ import { purchasesRouter } from './modules/purchases/purchases.routes';
 import { salesRouter } from './modules/sales/sales.routes';
 import { returnsRouter } from './modules/returns/returns.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
+import { forecastingRouter } from './modules/forecasting/forecasting.routes';
 
 export interface AppOptions {
   authRateLimitMax?: number;
@@ -50,6 +51,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/sales', salesRouter);
   app.use('/api/v1/returns', returnsRouter);
   app.use('/api/v1/reports', reportsRouter);
+  app.use('/api/v1/forecasting', forecastingRouter);
 
   app.use(notFound);
   app.use(errorHandler);

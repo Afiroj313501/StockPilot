@@ -12,3 +12,24 @@ export function createAuthLimiter(limit: number) {
     },
   });
 }
+
+// Limits requests per logged-in user (not per IP). Place it after requireAuth.
+export function createUserLimiter(limit: number, windowMs = 15 * 60 * 1000) {
+  return rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: (_req, res) =>
+      (res.locals.auth as { user: { id: string } } | undefined)?.user.id ?? 'anonymous',
+    handler: (_req, _res, next) => {
+      next(
+        new AppError(
+          429,
+          'RATE_LIMITED',
+          'Too many questions. Please wait a few minutes and try again.',
+        ),
+      );
+    },
+  });
+}

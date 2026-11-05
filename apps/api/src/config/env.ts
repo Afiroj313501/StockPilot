@@ -10,8 +10,11 @@ const envSchema = z.object({
   WEB_ORIGIN: z.string().url(),
   DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'must be a PostgreSQL URL'),
   SESSION_SECRET: z.string().min(32, 'must be at least 32 characters'),
-  AI_PROVIDER: z.string().default('none'),
+  AI_PROVIDER: z.enum(['none', 'openai-compatible']).default('none'),
   AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().optional(),
+  AI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
 });
 
 export type Env = z.infer<typeof envSchema>;

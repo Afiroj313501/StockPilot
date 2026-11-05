@@ -44,7 +44,8 @@ export function confidenceOf(observedDays: number, transactions: number): Confid
 // All inputs are whole numbers, so every quotient below is either exact or at least 1/180 away
 // from a whole number: rounding up is safe and the result is identical on every run.
 const ceilDiv = (a: number, b: number) => Math.ceil(a / b);
-const fixed = (n: number, d: number, dp = 2) => (Math.round((n / d) * 10 ** dp) / 10 ** dp).toFixed(dp);
+const fixed = (n: number, d: number, dp = 2) =>
+  (Math.round((n / d) * 10 ** dp) / 10 ** dp).toFixed(dp);
 
 export function buildPlan(i: PlanInputs): Plan {
   const stock = i.currentStock;
@@ -71,7 +72,9 @@ export function buildPlan(i: PlanInputs): Plan {
       `There is not enough history to forecast (at least ${MIN_DAYS} days and ${MIN_TRANSACTIONS} sales are needed), so no quantity is recommended.`,
     );
     if (lowStock) {
-      steps.push(`Stock (${stock}) is at or below the low-stock threshold (${i.lowStockThreshold}): review this product by hand.`);
+      steps.push(
+        `Stock (${stock}) is at or below the low-stock threshold (${i.lowStockThreshold}): review this product by hand.`,
+      );
     }
     return {
       status: 'INSUFFICIENT_DATA',
@@ -106,11 +109,17 @@ export function buildPlan(i: PlanInputs): Plan {
   if (u === 0) {
     steps.push('Nothing was sold in this window, so no reorder is suggested.');
   } else if (position > reorderPoint) {
-    steps.push(`${position} is above the reorder point (${reorderPoint}), so no order is needed yet.`);
+    steps.push(
+      `${position} is above the reorder point (${reorderPoint}), so no order is needed yet.`,
+    );
   } else if (quantity === 0) {
-    steps.push(`${position} is at the reorder point, but the order-up-to level equals it, so no units are needed.`);
+    steps.push(
+      `${position} is at the reorder point, but the order-up-to level equals it, so no units are needed.`,
+    );
   } else {
-    steps.push(`${position} is at or below the reorder point (${reorderPoint}), so order ${orderUpToLevel} - ${position} = ${quantity} unit(s).`);
+    steps.push(
+      `${position} is at or below the reorder point (${reorderPoint}), so order ${orderUpToLevel} - ${position} = ${quantity} unit(s).`,
+    );
   }
 
   return {
