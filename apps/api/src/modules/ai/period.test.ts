@@ -1,19 +1,68 @@
-const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-const NUMBER = /\d[\d,]*(?:\.\d+)?/g;
+import { describe, expect, it } from 'vitest';
+import { resolvePeriod } from './Period';
 
-export function numbersIn(text: string): number[] {
-  return (text.match(NUMBER) ?? []).map((t) => Number(t.replace(/,/g, ''))).filter((n) => Number.isFinite(n));
-}
+const today = '2026-11-05';
 
-// Numbers in an answer that cannot be traced to the data the lookups returned (or to the
-// question itself). Whole numbers from 0 to 10 are allowed, because answers count list items.
-// Digits inside identifiers are not treated as data.
-export function ungroundedNumbers(answer: string, sources: string[], question: string): number[] {
-  const allowed = new Set<number>();
-  for (const source of sources) for (const n of numbersIn(source.replace(UUID, ' '))) allowed.add(n);
-  for (const n of numbersIn(question)) allowed.add(n);
+describe('resolvePeriod', () => {
+  it('defaults to the last 30 days through today', () => {
+    expect(resolvePeriod('How are sales doing?', today)).toEqual({
+      from: '2026-10-07',
+      to: today,
+      label: 'the last 30 days',
+      explicit: false,
+    });
+  });
 
-  return [...new Set(numbersIn(answer))].filter(
-    (n) => !(Number.isInteger(n) && n >= 0 && n <= 10) && !allowed.has(n),
-  );
-}
+  it('resolves explicit day ranges and clamps their size', () => {
+    expect(resolvePeriod('sales in the past 7 days', today)).toEqual({
+      from: '2026-10-30',
+      to: today,
+      label: 'the last 7 day(s)',
+      explicit: true,
+    });
+    expect(resolvePeriod('last 0 days', today).from).toBe(today);
+    expect(resolvePeriod('last 999 days', today).from).toBe('2025-11-06');
+  });
+
+  it('resolves relative calendar periods', () => {
+    expect(resolvePeriod('sales yesterday', today)).toEqual({
+      from: '2026-11-04',
+      to: '2026-11-04',
+      label: 'yesterday',
+      explicit: true,
+    });
+    expect(resolvePeriod('sales this week', today)).toEqual({
+      from: '2026-11-02',
+      to: today,
+      label: 'this week',
+      explicit: true,
+    });
+    expect(resolvePeriod('sales last week', today)).toEqual({
+      from: '2026-10-26',
+      to: '2026-11-01',
+      label: 'last week',
+      explicit: true,
+    });
+  });
+
+  it('resolves month and today phrases', () => {
+    expect(resolvePeriod('sales last month', today)).toEqual({
+      from: '2026-10-01',
+      to: '2026-10-31',
+      label: 'last month',
+      explicit: true,
+    });
+    expect(resolvePeriod('sales this month', today)).toEqual({
+      from: '2026-11-01',
+      to: today,
+      label: 'this month',
+      explicit: true,
+    });
+    expect(resolvePeriod('sales today', today)).toEqual({
+      from: today,
+      to: today,
+      label: 'today',
+      explicit: true,
+    });
+  });
+});
