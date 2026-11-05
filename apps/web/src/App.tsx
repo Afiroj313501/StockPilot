@@ -20,6 +20,7 @@ import { SalesPage } from './pages/SalesPage';
 import { ReturnsPage } from './pages/ReturnsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ReorderPage } from './pages/ReorderPage';
+import { AssistantPage } from './pages/AssistantPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -51,6 +52,7 @@ export function App() {
               <Route path="/returns" element={<ReturnsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reorder" element={<ReorderPage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
             </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />

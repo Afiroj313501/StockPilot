@@ -11,6 +11,31 @@ export interface Account {
   memberships: Membership[];
 }
 
+export interface AiEvidence {
+  tool: string;
+  label: string;
+  params: Record<string, unknown>;
+  period?: { from: string; to: string; timeZone: string };
+  metrics: Record<string, string | number>;
+}
+
+export interface AiAnswer {
+  status: 'ANSWERED' | 'UNSUPPORTED' | 'UNAVAILABLE';
+  mode: 'AI' | 'BUILT_IN';
+  answer: string | null;
+  evidence: AiEvidence[];
+  notice: string | null;
+  supportedQuestions: string[];
+}
+
+export interface AiStatus {
+  mode: 'AI' | 'BUILT_IN';
+  reason: 'ENABLED' | 'DISABLED' | 'NOT_CONFIGURED';
+  providerName: string | null;
+  supportedQuestions: string[];
+  privacy: string;
+}
+
 export interface StoreSettings {
   storeName: string;
   businessCategory: string | null;

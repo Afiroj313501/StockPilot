@@ -11,6 +11,7 @@ import {
   Tags,
   Truck,
   TrendingUp,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '../types/api';
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/categories', label: 'Categories', icon: Tags, minRole: 'MANAGER' },
   { to: '/inventory', label: 'Inventory', icon: ClipboardList, minRole: 'MANAGER' },
   { to: '/reorder', label: 'Reorder planner', icon: TrendingUp, minRole: 'MANAGER' },
+  { to: '/assistant', label: 'Business assistant', icon: Sparkles, minRole: 'MANAGER' },
   { to: '/suppliers', label: 'Suppliers', icon: Truck, minRole: 'MANAGER' },
   { to: '/purchases', label: 'Purchases', icon: ShoppingCart, minRole: 'MANAGER' },
   { to: '/settings', label: 'Settings', icon: Settings, minRole: 'OWNER' },
