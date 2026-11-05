@@ -15,7 +15,9 @@ function EvidenceList({ evidence }: { evidence: AiEvidence[] }) {
   if (evidence.length === 0) return null;
   return (
     <details className="mt-3 text-sm">
-      <summary className="cursor-pointer font-medium text-blue-600">Data used for this answer</summary>
+      <summary className="cursor-pointer font-medium text-blue-600">
+        Data used for this answer
+      </summary>
       <ul className="mt-2 space-y-3">
         {evidence.map((item, index) => (
           <li key={`${item.tool}-${index}`} className="rounded-lg bg-slate-50 p-3">
@@ -71,7 +73,8 @@ export function AssistantPage() {
           {
             id,
             question,
-            error: error instanceof ApiError ? error.message : 'Something went wrong. Please try again.',
+            error:
+              error instanceof ApiError ? error.message : 'Something went wrong. Please try again.',
           },
           ...previous,
         ]),
@@ -84,13 +87,16 @@ export function AssistantPage() {
       <div>
         <h1 className="text-2xl font-semibold text-navy-900">Business assistant</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Ask about sales, profit, best sellers, stock, inventory value and reorders. Answers come from your own
-          data. Nothing here changes any data, and answers are not saved.
+          Ask about sales, profit, best sellers, stock, inventory value and reorders. Answers come
+          from your own data. Nothing here changes any data, and answers are not saved.
         </p>
       </div>
 
       {status.data && (
-        <div role="note" className="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-slate-200">
+        <div
+          role="note"
+          className="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-slate-200"
+        >
           <p className="font-medium text-navy-900">
             {status.data.mode === 'AI'
               ? `AI mode is on (${status.data.providerName}). Built-in answers are used if the AI fails.`
@@ -165,12 +171,17 @@ export function AssistantPage() {
               {turn.result && (
                 <>
                   {turn.result.notice && (
-                    <p role="status" className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                    <p
+                      role="status"
+                      className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"
+                    >
                       {turn.result.notice}
                     </p>
                   )}
                   {turn.result.answer ? (
-                    <p className="mt-2 whitespace-pre-line text-sm text-slate-800">{turn.result.answer}</p>
+                    <p className="mt-2 whitespace-pre-line text-sm text-slate-800">
+                      {turn.result.answer}
+                    </p>
                   ) : (
                     turn.result.status !== 'ANSWERED' && (
                       <div className="mt-2 text-sm text-slate-700">
@@ -185,10 +196,14 @@ export function AssistantPage() {
                     )
                   )}
                   {turn.result.status === 'UNSUPPORTED' && turn.result.answer && (
-                    <p className="mt-1 text-xs text-slate-500">Try one of the example questions above.</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Try one of the example questions above.
+                    </p>
                   )}
                   <p className="mt-2 text-xs text-slate-500">
-                    {turn.result.mode === 'AI' ? 'AI answer, checked against your data' : 'Built-in answer'}
+                    {turn.result.mode === 'AI'
+                      ? 'AI answer, checked against your data'
+                      : 'Built-in answer'}
                   </p>
                   <EvidenceList evidence={turn.result.evidence} />
                 </>

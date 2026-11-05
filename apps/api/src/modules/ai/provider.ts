@@ -33,7 +33,8 @@ export interface AiProvider {
   complete(request: ProviderRequest): Promise<ProviderResponse>;
 }
 
-export type ProviderErrorCode = 'TIMEOUT' | 'RATE_LIMITED' | 'AUTH' | 'UNAVAILABLE' | 'BAD_RESPONSE';
+export type ProviderErrorCode =
+  'TIMEOUT' | 'RATE_LIMITED' | 'AUTH' | 'UNAVAILABLE' | 'BAD_RESPONSE';
 
 // Messages are written by us and never contain the provider's response body or any credentials.
 export class ProviderError extends Error {

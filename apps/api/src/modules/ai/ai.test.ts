@@ -76,7 +76,12 @@ describe('AI routes', () => {
     const setup = await fixture();
 
     expect((await ask(app, setup.cashierCookie, 'What is my inventory worth?')).status).toBe(403);
-    for (const body of [{}, { question: '' }, { question: 'x'.repeat(501) }, { question: 'ok', storeId: 'x' }]) {
+    for (const body of [
+      {},
+      { question: '' },
+      { question: 'x'.repeat(501) },
+      { question: 'ok', storeId: 'x' },
+    ]) {
       const response = await request(app)
         .post('/api/v1/ai/ask')
         .set('Cookie', setup.managerCookie)
@@ -102,7 +107,11 @@ describe('AI routes', () => {
     const result = await ask(providerApp, setup.managerCookie, 'What is my inventory worth?');
 
     expect(result.status).toBe(200);
-    expect(result.body).toMatchObject({ status: 'ANSWERED', mode: 'AI', answer: 'Inventory is worth 40.00.' });
+    expect(result.body).toMatchObject({
+      status: 'ANSWERED',
+      mode: 'AI',
+      answer: 'Inventory is worth 40.00.',
+    });
     expect(result.body.evidence).toHaveLength(1);
     expect(result.body.evidence[0].tool).toBe('getInventoryValuation');
     expect(calls).toHaveLength(2);
@@ -130,10 +139,14 @@ describe('AI routes', () => {
     const setup = await fixture();
     const limited = createApp({ authRateLimitMax: 1000, aiRateLimitMax: 1, aiProvider: null });
 
-    expect((await ask(limited, setup.managerCookie, 'What is my inventory worth?')).status).toBe(200);
+    expect((await ask(limited, setup.managerCookie, 'What is my inventory worth?')).status).toBe(
+      200,
+    );
     const blocked = await ask(limited, setup.managerCookie, 'What is my inventory worth?');
     expect(blocked.status).toBe(429);
     expect(blocked.body.error.code).toBe('RATE_LIMITED');
-    expect((await ask(limited, setup.owner.cookie, 'What is my inventory worth?')).status).toBe(200);
+    expect((await ask(limited, setup.owner.cookie, 'What is my inventory worth?')).status).toBe(
+      200,
+    );
   });
 });

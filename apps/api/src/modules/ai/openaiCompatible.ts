@@ -1,4 +1,10 @@
-import { ProviderError, type AiProvider, type ProviderRequest, type ProviderResponse, type ToolCall } from './provider';
+import {
+  ProviderError,
+  type AiProvider,
+  type ProviderRequest,
+  type ProviderResponse,
+  type ToolCall,
+} from './provider';
 
 interface OpenAiCompatibleOptions {
   baseUrl: string;
@@ -40,7 +46,8 @@ function mapMessages(request: ProviderRequest) {
 }
 
 function parseResponse(body: unknown): ProviderResponse {
-  if (!body || typeof body !== 'object') throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+  if (!body || typeof body !== 'object')
+    throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
   const response = body as ChatResponse;
   const message = response.choices?.[0]?.message;
   if (!message || (message.content !== null && typeof message.content !== 'string')) {
@@ -53,7 +60,8 @@ function parseResponse(body: unknown): ProviderResponse {
   }
 
   const toolCalls: ToolCall[] = (rawToolCalls ?? []).map((toolCall) => {
-    if (!toolCall || typeof toolCall !== 'object') throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+    if (!toolCall || typeof toolCall !== 'object')
+      throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
     const item = toolCall as { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
     if (
       typeof item.id !== 'string' ||
@@ -69,7 +77,8 @@ function parseResponse(body: unknown): ProviderResponse {
 }
 
 function errorForStatus(status: number): ProviderError {
-  if (status === 401 || status === 403) return new ProviderError('AUTH', 'AI provider authentication failed.');
+  if (status === 401 || status === 403)
+    return new ProviderError('AUTH', 'AI provider authentication failed.');
   if (status === 429) return new ProviderError('RATE_LIMITED', 'AI provider rate limit reached.');
   if (status >= 500) return new ProviderError('UNAVAILABLE', 'AI provider is unavailable.');
   return new ProviderError('BAD_RESPONSE', 'AI provider returned an invalid response.');
@@ -96,7 +105,11 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
             messages: mapMessages(request),
             tools: request.tools.map((tool) => ({
               type: 'function',
-              function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.parameters,
+              },
             })),
             temperature: 0,
             tool_choice: 'auto',

@@ -24,7 +24,12 @@ export function resolvePeriod(question: string, today: string): Period {
   const lastDays = /(?:last|past)\s+(\d{1,3})\s+days?/.exec(q);
   if (lastDays) {
     const n = Math.min(Math.max(Number(lastDays[1]), 1), 365);
-    return { from: addDays(today, -(n - 1)), to: today, label: `the last ${n} day(s)`, explicit: true };
+    return {
+      from: addDays(today, -(n - 1)),
+      to: today,
+      label: `the last ${n} day(s)`,
+      explicit: true,
+    };
   }
   if (q.includes('yesterday')) {
     const day = addDays(today, -1);
@@ -32,7 +37,12 @@ export function resolvePeriod(question: string, today: string): Period {
   }
   if (q.includes('last week')) {
     const monday = bucketStart(today, 'week');
-    return { from: addDays(monday, -7), to: addDays(monday, -1), label: 'last week', explicit: true };
+    return {
+      from: addDays(monday, -7),
+      to: addDays(monday, -1),
+      label: 'last week',
+      explicit: true,
+    };
   }
   if (q.includes('this week')) {
     return { from: bucketStart(today, 'week'), to: today, label: 'this week', explicit: true };

@@ -12,6 +12,7 @@ export function useAiStatus() {
 
 export function useAsk() {
   return useMutation({
-    mutationFn: (question: string) => api<AiAnswer>('/ai/ask', { method: 'POST', body: { question } }),
+    mutationFn: (question: string) =>
+      api<AiAnswer>('/ai/ask', { method: 'POST', body: { question } }),
   });
 }

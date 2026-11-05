@@ -11,10 +11,22 @@ const base: AiSettings = {
 
 describe('resolveProvider', () => {
   it('uses built-in mode unless the provider is fully configured', () => {
-    expect(resolveProvider({ ...base, AI_PROVIDER: 'none' })).toMatchObject({ provider: null, reason: 'DISABLED' });
-    expect(resolveProvider({ ...base, AI_API_KEY: undefined })).toMatchObject({ provider: null, reason: 'NOT_CONFIGURED' });
-    expect(resolveProvider({ ...base, AI_API_KEY: '   ' })).toMatchObject({ provider: null, reason: 'NOT_CONFIGURED' });
-    expect(resolveProvider({ ...base, AI_MODEL: '' })).toMatchObject({ provider: null, reason: 'NOT_CONFIGURED' });
+    expect(resolveProvider({ ...base, AI_PROVIDER: 'none' })).toMatchObject({
+      provider: null,
+      reason: 'DISABLED',
+    });
+    expect(resolveProvider({ ...base, AI_API_KEY: undefined })).toMatchObject({
+      provider: null,
+      reason: 'NOT_CONFIGURED',
+    });
+    expect(resolveProvider({ ...base, AI_API_KEY: '   ' })).toMatchObject({
+      provider: null,
+      reason: 'NOT_CONFIGURED',
+    });
+    expect(resolveProvider({ ...base, AI_MODEL: '' })).toMatchObject({
+      provider: null,
+      reason: 'NOT_CONFIGURED',
+    });
 
     const enabled = resolveProvider(base);
     expect(enabled.reason).toBe('ENABLED');

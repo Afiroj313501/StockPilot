@@ -3,7 +3,11 @@ import { createOpenAiCompatibleProvider } from './openaiCompatible';
 import type { ProviderRequest } from './provider';
 
 const KEY = 'sk-test-secret';
-const provider = createOpenAiCompatibleProvider({ baseUrl: 'https://llm.example.test/v1/', apiKey: KEY, model: 'm1' });
+const provider = createOpenAiCompatibleProvider({
+  baseUrl: 'https://llm.example.test/v1/',
+  apiKey: KEY,
+  model: 'm1',
+});
 
 const request: ProviderRequest = {
   messages: [
@@ -16,7 +20,8 @@ const request: ProviderRequest = {
   timeoutMs: 1000,
 };
 
-const reply = (body: unknown, status = 200) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
+const reply = (body: unknown, status = 200) =>
+  new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -32,7 +37,13 @@ describe('OpenAI-compatible adapter', () => {
             {
               message: {
                 content: null,
-                tool_calls: [{ id: 'c1', type: 'function', function: { name: 'getLowStockProducts', arguments: '{"limit":3}' } }],
+                tool_calls: [
+                  {
+                    id: 'c1',
+                    type: 'function',
+                    function: { name: 'getLowStockProducts', arguments: '{"limit":3}' },
+                  },
+                ],
               },
             },
           ],
@@ -53,7 +64,11 @@ describe('OpenAI-compatible adapter', () => {
     const body = JSON.parse(init.body as string);
     expect(body).toMatchObject({ model: 'm1', temperature: 0, tool_choice: 'auto' });
     expect(body.tools[0].function.name).toBe('getLowStockProducts');
-    expect(body.messages[2].tool_calls[0]).toEqual({ id: 'x', type: 'function', function: { name: 't', arguments: '{}' } });
+    expect(body.messages[2].tool_calls[0]).toEqual({
+      id: 'x',
+      type: 'function',
+      function: { name: 't', arguments: '{}' },
+    });
     expect(body.messages[3]).toEqual({ role: 'tool', tool_call_id: 'x', content: '{}' });
   });
 
@@ -91,9 +106,16 @@ describe('OpenAI-compatible adapter', () => {
           }),
       ),
     );
-    await expect(provider.complete({ ...request, timeoutMs: 20 })).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await expect(provider.complete({ ...request, timeoutMs: 20 })).rejects.toMatchObject({
+      code: 'TIMEOUT',
+    });
 
-    for (const body of ['not json', { choices: [] }, { choices: [{ message: { content: 5 } }] }, {}]) {
+    for (const body of [
+      'not json',
+      { choices: [] },
+      { choices: [{ message: { content: 5 } }] },
+      {},
+    ]) {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(reply(body)));
       await expect(provider.complete(request)).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
     }

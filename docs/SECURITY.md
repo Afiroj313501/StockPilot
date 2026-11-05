@@ -93,3 +93,17 @@ Reporting procedure and known limitations are added in Phase 13.
 - Report queries use parameterised SQL only; the time zone and dates are bound parameters.
 - CSV exports neutralise spreadsheet formulas in text cells. Known gap: exports are not audit-logged
   until Phase 12.
+
+## AI assistant (chunk 17)
+
+- Endpoints require MANAGER or OWNER and a verified store context (checked before the rate limiter,
+  validation or any lookup). Rate limit: 20 questions per user per 15 minutes.
+- The model only reaches data through eight read-only lookups that re-check the role, validate strictly
+  and use the caller's store (covered by tests for other-store product ids, extra `storeId` parameters,
+  unknown tools and invalid values). There is no SQL access.
+- Model output is validated and grounded against the lookup results; failures fall back to built-in answers.
+- The API key is read from the environment only; it is not sent to the browser, returned or logged.
+  Provider errors are mapped to fixed messages and never include provider response bodies.
+- Known risks: prompt injection through product names is mitigated (cleaning, data-not-instructions
+  prompt, no write access, grounding check) but not impossible; external providers see product and sales
+  figures (documented in docs/AI.md).
