@@ -1,54 +1,127 @@
-import { addDays, bucketStart } from '../reports/dateRange';
+import { ProviderError, type AiProvider, type ProviderRequest, type ProviderResponse, type ToolCall } from './provider';
 
-export interface Period {
-  from: string;
-  to: string;
-  label: string;
-  explicit: boolean; // false = the question named no period and the last 30 days were used
+interface OpenAiCompatibleOptions {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
 }
 
-const firstOfMonth = (date: string) => `${date.slice(0, 8)}01`;
-
-function firstOfPreviousMonth(date: string): string {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  const py = month === 1 ? year - 1 : year;
-  const pm = month === 1 ? 12 : month - 1;
-  return `${py}-${String(pm).padStart(2, '0')}-01`;
-}
-
-// Understands a handful of everyday phrases. `today` is the store-local date (YYYY-MM-DD).
-export function resolvePeriod(question: string, today: string): Period {
-  const q = question.toLowerCase();
-
-  const lastDays = /(?:last|past)\s+(\d{1,3})\s+days?/.exec(q);
-  if (lastDays) {
-    const n = Math.min(Math.max(Number(lastDays[1]), 1), 365);
-    return { from: addDays(today, -(n - 1)), to: today, label: `the last ${n} day(s)`, explicit: true };
-  }
-  if (q.includes('yesterday')) {
-    const day = addDays(today, -1);
-    return { from: day, to: day, label: 'yesterday', explicit: true };
-  }
-  if (q.includes('last week')) {
-    const monday = bucketStart(today, 'week');
-    return { from: addDays(monday, -7), to: addDays(monday, -1), label: 'last week', explicit: true };
-  }
-  if (q.includes('this week')) {
-    return { from: bucketStart(today, 'week'), to: today, label: 'this week', explicit: true };
-  }
-  if (q.includes('last month')) {
-    return {
-      from: firstOfPreviousMonth(today),
-      to: addDays(firstOfMonth(today), -1),
-      label: 'last month',
-      explicit: true,
+interface ChatResponse {
+  choices?: Array<{
+    message?: {
+      content?: unknown;
+      tool_calls?: unknown;
     };
-  }
-  if (q.includes('this month')) {
-    return { from: firstOfMonth(today), to: today, label: 'this month', explicit: true };
-  }
-  if (/\btoday\b/.test(q)) return { from: today, to: today, label: 'today', explicit: true };
+  }>;
+}
 
-  return { from: addDays(today, -29), to: today, label: 'the last 30 days', explicit: false };
+function mapMessages(request: ProviderRequest) {
+  return request.messages.map((message) => {
+    if (message.role === 'assistant') {
+      return {
+        role: message.role,
+        content: message.content,
+        ...(message.toolCalls
+          ? {
+              tool_calls: message.toolCalls.map((toolCall) => ({
+                id: toolCall.id,
+                type: 'function',
+                function: { name: toolCall.name, arguments: toolCall.arguments },
+              })),
+            }
+          : {}),
+      };
+    }
+    if (message.role === 'tool') {
+      return { role: message.role, tool_call_id: message.toolCallId, content: message.content };
+    }
+    return message;
+  });
+}
+
+function parseResponse(body: unknown): ProviderResponse {
+  if (!body || typeof body !== 'object') throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+  const response = body as ChatResponse;
+  const message = response.choices?.[0]?.message;
+  if (!message || (message.content !== null && typeof message.content !== 'string')) {
+    throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+  }
+
+  const rawToolCalls = message.tool_calls;
+  if (rawToolCalls !== undefined && !Array.isArray(rawToolCalls)) {
+    throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+  }
+
+  const toolCalls: ToolCall[] = (rawToolCalls ?? []).map((toolCall) => {
+    if (!toolCall || typeof toolCall !== 'object') throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+    const item = toolCall as { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
+    if (
+      typeof item.id !== 'string' ||
+      typeof item.function?.name !== 'string' ||
+      typeof item.function.arguments !== 'string'
+    ) {
+      throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+    }
+    return { id: item.id, name: item.function.name, arguments: item.function.arguments };
+  });
+
+  return { content: message.content as string | null, toolCalls };
+}
+
+function errorForStatus(status: number): ProviderError {
+  if (status === 401 || status === 403) return new ProviderError('AUTH', 'AI provider authentication failed.');
+  if (status === 429) return new ProviderError('RATE_LIMITED', 'AI provider rate limit reached.');
+  if (status >= 500) return new ProviderError('UNAVAILABLE', 'AI provider is unavailable.');
+  return new ProviderError('BAD_RESPONSE', 'AI provider returned an invalid response.');
+}
+
+export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions): AiProvider {
+  const endpoint = `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+
+  return {
+    name: 'openai-compatible',
+    async complete(request) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), request.timeoutMs);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${options.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: options.model,
+            messages: mapMessages(request),
+            tools: request.tools.map((tool) => ({
+              type: 'function',
+              function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+            })),
+            temperature: 0,
+            tool_choice: 'auto',
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) throw errorForStatus(response.status);
+
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          throw new ProviderError('BAD_RESPONSE', 'Invalid provider response.');
+        }
+        return parseResponse(body);
+      } catch (error) {
+        if (error instanceof ProviderError) throw error;
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new ProviderError('TIMEOUT', 'AI provider request timed out.');
+        }
+        throw new ProviderError('UNAVAILABLE', 'AI provider is unavailable.');
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+  };
 }
