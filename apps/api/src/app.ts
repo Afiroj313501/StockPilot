@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { originGuard } from './middleware/originGuard';
-import { createAuthLimiter } from './middleware/rateLimit';
+import { createAuthLimiter, createUserLimiter } from './middleware/rateLimit';
 import { requestId } from './middleware/requestId';
 import { createAuthRouter } from './modules/auth/auth.routes';
 import { healthRouter } from './modules/health/health.routes';
@@ -21,9 +21,15 @@ import { salesRouter } from './modules/sales/sales.routes';
 import { returnsRouter } from './modules/returns/returns.routes';
 import { reportsRouter } from './modules/reports/reports.routes';
 import { forecastingRouter } from './modules/forecasting/forecasting.routes';
+import { createAiRouter } from './modules/ai/ai.routes';
+import { resolveProvider, type ProviderStatus } from './modules/ai/config';
+import type { AiProvider } from './modules/ai/provider';
 
 export interface AppOptions {
   authRateLimitMax?: number;
+  aiRateLimitMax?: number;
+  // undefined = decide from the environment, null = built-in answers only (used by tests)
+  aiProvider?: AiProvider | null;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -38,6 +44,16 @@ export function createApp(options: AppOptions = {}) {
   app.use(cookieParser());
 
   const authLimiter = createAuthLimiter(options.authRateLimitMax ?? 10);
+  const envAi = resolveProvider(env);
+  const aiStatus = (): ProviderStatus =>
+    options.aiProvider === undefined
+      ? envAi
+      : {
+          provider: options.aiProvider,
+          reason: options.aiProvider ? 'ENABLED' : 'DISABLED',
+          timeoutMs: env.AI_TIMEOUT_MS,
+        };
+  const aiLimiter = createUserLimiter(options.aiRateLimitMax ?? 20);
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(authLimiter));
   app.use('/api/v1/stores', storesRouter);
@@ -52,6 +68,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/returns', returnsRouter);
   app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/forecasting', forecastingRouter);
+  app.use('/api/v1/ai', createAiRouter({ limiter: aiLimiter, getStatus: aiStatus }));
 
   app.use(notFound);
   app.use(errorHandler);
