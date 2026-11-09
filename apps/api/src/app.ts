@@ -26,10 +26,12 @@ import { resolveProvider, type ProviderStatus } from './modules/ai/config';
 import type { AiProvider } from './modules/ai/provider';
 import { createAuditTrail } from './modules/audit/audit.middleware';
 import { auditRouter } from './modules/audit/audit.routes';
+import type { AuditWriter } from './modules/audit/audit.service';
 
 export interface AppOptions {
   authRateLimitMax?: number;
   aiRateLimitMax?: number;
+  auditWriter?: AuditWriter;
   // undefined = decide from the environment, null = built-in answers only (used by tests)
   aiProvider?: AiProvider | null;
 }
@@ -44,7 +46,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(originGuard);
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  app.use(createAuditTrail());
+  app.use(createAuditTrail(options.auditWriter));
 
   const authLimiter = createAuthLimiter(options.authRateLimitMax ?? 10);
   const envAi = resolveProvider(env);
@@ -71,8 +73,8 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/returns', returnsRouter);
   app.use('/api/v1/reports', reportsRouter);
   app.use('/api/v1/forecasting', forecastingRouter);
-  app.use('/api/v1/audit', auditRouter);
   app.use('/api/v1/ai', createAiRouter({ limiter: aiLimiter, getStatus: aiStatus }));
+  app.use('/api/v1/audit-logs', auditRouter);
 
   app.use(notFound);
   app.use(errorHandler);
