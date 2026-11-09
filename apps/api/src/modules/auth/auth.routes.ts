@@ -35,7 +35,12 @@ export function createAuthRouter(authLimiter: RequestHandler): Router {
       try {
         const { userId, session } = await login(input);
         setSessionCookie(res, session.token, session.expiresAt);
-        await recordAuthEvent({ userId, action: 'auth.login', summary: 'Signed in', requestId: res.locals.requestId });
+        await recordAuthEvent({
+          userId,
+          action: 'auth.login',
+          summary: 'Signed in',
+          requestId: res.locals.requestId,
+        });
         res.json(await getAccount(userId));
       } catch (err) {
         if (err instanceof AppError && err.code === 'INVALID_CREDENTIALS') {

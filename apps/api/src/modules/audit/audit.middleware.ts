@@ -21,7 +21,12 @@ function parseJson(chunk: unknown, res: Response): Record<string, unknown> | nul
   }
 }
 
-async function capture(req: Request, res: Response, chunk: unknown, write: AuditWriter): Promise<void> {
+async function capture(
+  req: Request,
+  res: Response,
+  chunk: unknown,
+  write: AuditWriter,
+): Promise<void> {
   try {
     if (res.statusCode < 200 || res.statusCode >= 300) return;
     if (res.getHeader('Idempotent-Replayed')) return;
@@ -54,7 +59,8 @@ async function capture(req: Request, res: Response, chunk: unknown, write: Audit
 export function createAuditTrail(write: AuditWriter = recordAudit): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
     const method = req.method.toUpperCase();
-    const audited = MUTATING.has(method) || (method === 'GET' && req.path.startsWith('/api/v1/reports/export/'));
+    const audited =
+      MUTATING.has(method) || (method === 'GET' && req.path.startsWith('/api/v1/reports/export/'));
     if (!audited) return next();
 
     const originalEnd = res.end.bind(res) as (...args: unknown[]) => Response;

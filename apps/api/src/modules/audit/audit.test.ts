@@ -30,8 +30,10 @@ const post = (cookie: string, path: string, body: object = {}) =>
   request(app).post(`/api/v1${path}`).set('Cookie', cookie).send(body);
 const patch = (cookie: string, path: string, body: object = {}) =>
   request(app).patch(`/api/v1${path}`).set('Cookie', cookie).send(body);
-const del = (cookie: string, path: string) => request(app).delete(`/api/v1${path}`).set('Cookie', cookie);
-const logs = (cookie: string, query = '') => request(app).get(`/api/v1/audit-logs${query}`).set('Cookie', cookie);
+const del = (cookie: string, path: string) =>
+  request(app).delete(`/api/v1${path}`).set('Cookie', cookie);
+const logs = (cookie: string, query = '') =>
+  request(app).get(`/api/v1/audit-logs${query}`).set('Cookie', cookie);
 
 interface Entry {
   action: string;
@@ -49,19 +51,27 @@ const entries = (res: request.Response): Entry[] => res.body.items;
 describe('what is recorded', () => {
   it('records sign-in events, never passwords or tokens, and ignores unknown accounts', async () => {
     const owner = await registerOwner(app, 'a');
-    const login = await request(app).post('/api/v1/auth/login').send({ email: owner.email, password: PASSWORD });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: owner.email, password: PASSWORD });
     expect(login.status).toBe(200);
     const token = cookieFrom(login).split('=')[1]!;
 
-    const wrong = await request(app).post('/api/v1/auth/login').send({ email: owner.email, password: 'WrongPassword123' });
+    const wrong = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: owner.email, password: 'WrongPassword123' });
     expect(wrong.status).toBe(401);
 
     const before = await prisma.auditLog.count();
-    const unknown = await request(app).post('/api/v1/auth/login').send({ email: 'nobody@example.com', password: 'WrongPassword123' });
+    const unknown = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'nobody@example.com', password: 'WrongPassword123' });
     expect(unknown.status).toBe(401);
     expect(await prisma.auditLog.count()).toBe(before);
 
-    expect((await request(app).post('/api/v1/auth/logout').set('Cookie', cookieFrom(login))).status).toBe(204);
+    expect(
+      (await request(app).post('/api/v1/auth/logout').set('Cookie', cookieFrom(login))).status,
+    ).toBe(204);
     const viewer = await loginAs(app, owner.email);
 
     const res = await logs(viewer, '?pageSize=100');
@@ -71,7 +81,11 @@ describe('what is recorded', () => {
     expect(count('auth.login')).toBe(2);
     expect(count('auth.login_failed')).toBe(1);
     expect(count('auth.logout')).toBe(1);
-    expect(entries(res)[0]).toMatchObject({ actorName: 'Owner a', actorRole: 'OWNER', actorUserId: owner.userId });
+    expect(entries(res)[0]).toMatchObject({
+      actorName: 'Owner a',
+      actorRole: 'OWNER',
+      actorUserId: owner.userId,
+    });
 
     const stored = JSON.stringify(await prisma.auditLog.findMany());
     for (const secret of [PASSWORD, 'WrongPassword123', token, owner.email, 'nobody@example.com']) {
@@ -89,21 +103,60 @@ describe('what is recorded', () => {
 
     expect((await post(owner.cookie, '/categories', { name: 'Drinks' })).status).toBe(201);
     const supplierId = await createSupplier(app, owner.cookie);
-    const productId = await createProduct(app, owner.cookie, { name: 'Cola', sku: 'COLA-1', sellingPrice: 10, costPrice: 4 });
-    expect((await patch(owner.cookie, `/products/${productId}`, { sellingPrice: 12 })).status).toBe(200);
-    expect((await patch(owner.cookie, `/products/${productId}`, { isActive: false })).status).toBe(200);
-    expect((await patch(owner.cookie, `/products/${productId}`, { isActive: true })).status).toBe(200);
+    const productId = await createProduct(app, owner.cookie, {
+      name: 'Cola',
+      sku: 'COLA-1',
+      sellingPrice: 10,
+      costPrice: 4,
+    });
+    expect((await patch(owner.cookie, `/products/${productId}`, { sellingPrice: 12 })).status).toBe(
+      200,
+    );
+    expect((await patch(owner.cookie, `/products/${productId}`, { isActive: false })).status).toBe(
+      200,
+    );
+    expect((await patch(owner.cookie, `/products/${productId}`, { isActive: true })).status).toBe(
+      200,
+    );
     const spare = await createProduct(app, owner.cookie, { name: 'Spare', sku: 'SPARE-1' });
     expect((await del(owner.cookie, `/products/${spare}`)).status).toBe(204);
-    expect((await post(owner.cookie, '/inventory/movements', { productId, type: 'OPENING', quantity: 20, idempotencyKey: nextKey() })).status).toBe(201);
-    expect((await patch(owner.cookie, `/users/${third.userId}/role`, { role: 'MANAGER' })).status).toBe(200);
-    expect((await patch(owner.cookie, '/settings', { taxRatePercent: 5, receiptFooter: 'Thanks for shopping' })).status).toBe(200);
+    expect(
+      (
+        await post(owner.cookie, '/inventory/movements', {
+          productId,
+          type: 'OPENING',
+          quantity: 20,
+          idempotencyKey: nextKey(),
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (await patch(owner.cookie, `/users/${third.userId}/role`, { role: 'MANAGER' })).status,
+    ).toBe(200);
+    expect(
+      (
+        await patch(owner.cookie, '/settings', {
+          taxRatePercent: 5,
+          receiptFooter: 'Thanks for shopping',
+        })
+      ).status,
+    ).toBe(200);
 
-    const po = await post(owner.cookie, '/purchases', { supplierId, items: [{ productId, quantityOrdered: 5, unitCost: 4 }] });
+    const po = await post(owner.cookie, '/purchases', {
+      supplierId,
+      items: [{ productId, quantityOrdered: 5, unitCost: 4 }],
+    });
     expect(po.status).toBe(201);
     expect((await post(managerCookie, `/purchases/${po.body.id}/submit`)).status).toBe(200);
     expect((await post(owner.cookie, `/purchases/${po.body.id}/approve`)).status).toBe(200);
-    expect((await post(managerCookie, `/purchases/${po.body.id}/receive`, { idempotencyKey: nextKey(), items: [{ productId, quantity: 5 }] })).status).toBe(201);
+    expect(
+      (
+        await post(managerCookie, `/purchases/${po.body.id}/receive`, {
+          idempotencyKey: nextKey(),
+          items: [{ productId, quantity: 5 }],
+        })
+      ).status,
+    ).toBe(201);
 
     const sale = await post(cashierCookie, '/sales', {
       idempotencyKey: nextKey(),
@@ -117,21 +170,44 @@ describe('what is recorded', () => {
       items: [{ productId, quantity: 1, restock: true, reason: 'CHANGED_MIND' }],
     });
     expect(ret.status).toBe(201);
-    expect((await post(owner.cookie, `/forecasting/products/${productId}/dismiss`)).status).toBe(201);
-    expect((await request(app).get('/api/v1/reports/export/sales').set('Cookie', owner.cookie)).status).toBe(200);
+    expect((await post(owner.cookie, `/forecasting/products/${productId}/dismiss`)).status).toBe(
+      201,
+    );
+    expect(
+      (await request(app).get('/api/v1/reports/export/sales').set('Cookie', owner.cookie)).status,
+    ).toBe(200);
 
     const res = await logs(owner.cookie, '?pageSize=100');
     expect(res.status).toBe(200);
     const list = entries(res);
     const expected = [
-      'auth.register', 'user.create', 'auth.login', 'category.create', 'supplier.create', 'product.create',
-      'product.update', 'product.archive', 'product.restore', 'product.delete', 'inventory.movement',
-      'user.role_change', 'settings.update', 'purchase.create', 'purchase.submit', 'purchase.approve',
-      'purchase.receive', 'sale.create', 'return.create', 'reorder.dismiss', 'export.download',
+      'auth.register',
+      'user.create',
+      'auth.login',
+      'category.create',
+      'supplier.create',
+      'product.create',
+      'product.update',
+      'product.archive',
+      'product.restore',
+      'product.delete',
+      'inventory.movement',
+      'user.role_change',
+      'settings.update',
+      'purchase.create',
+      'purchase.submit',
+      'purchase.approve',
+      'purchase.receive',
+      'sale.create',
+      'return.create',
+      'reorder.dismiss',
+      'export.download',
     ];
     for (const action of expected) expect(list.map((e) => e.action)).toContain(action);
 
-    expect(list.find((e) => e.action === 'product.create' && e.resourceId === productId)).toMatchObject({
+    expect(
+      list.find((e) => e.action === 'product.create' && e.resourceId === productId),
+    ).toMatchObject({
       actorName: 'Owner a',
       actorRole: 'OWNER',
       resourceType: 'Product',
@@ -141,10 +217,19 @@ describe('what is recorded', () => {
 
     const move = list.find((e) => e.action === 'inventory.movement')!;
     expect(move.summary).toBe('Opening stock: +20 unit(s) of "Cola" (0 -> 20)');
-    expect(move.metadata).toMatchObject({ quantityChange: 20, quantityBefore: 0, quantityAfter: 20 });
+    expect(move.metadata).toMatchObject({
+      quantityChange: 20,
+      quantityBefore: 0,
+      quantityAfter: 20,
+    });
 
     const sold = list.find((e) => e.action === 'sale.create')!;
-    expect(sold).toMatchObject({ actorName: 'CASHIER a', actorRole: 'CASHIER', resourceType: 'Sale', resourceId: sale.body.id });
+    expect(sold).toMatchObject({
+      actorName: 'CASHIER a',
+      actorRole: 'CASHIER',
+      resourceType: 'Sale',
+      resourceId: sale.body.id,
+    });
     expect(sold.summary).toContain('S-000001');
     expect(list.find((e) => e.action === 'return.create')!.summary).toContain('R-000001');
     expect(list.find((e) => e.action === 'purchase.receive')!.summary).toContain('PO-0001');
@@ -164,19 +249,56 @@ describe('what is recorded', () => {
     const owner = await registerOwner(app, 'a');
     const cashier = await addMember(app, owner.cookie, 'CASHIER', 'a');
     const cashierCookie = await loginAs(app, cashier.email);
-    const productId = await createProduct(app, owner.cookie, { name: 'Dup', sku: 'DUP-1', sellingPrice: 2, costPrice: 1 });
-    await post(owner.cookie, '/inventory/movements', { productId, type: 'OPENING', quantity: 10, idempotencyKey: nextKey() });
+    const productId = await createProduct(app, owner.cookie, {
+      name: 'Dup',
+      sku: 'DUP-1',
+      sellingPrice: 2,
+      costPrice: 1,
+    });
+    await post(owner.cookie, '/inventory/movements', {
+      productId,
+      type: 'OPENING',
+      quantity: 10,
+      idempotencyKey: nextKey(),
+    });
     const before = await prisma.auditLog.count();
 
     expect((await post(owner.cookie, '/products', { name: '' })).status).toBe(400);
-    expect((await post(cashierCookie, '/products', { name: 'X', sku: 'X-1', costPrice: 1, sellingPrice: 2 })).status).toBe(403);
-    expect((await post(owner.cookie, '/products', { name: 'Again', sku: 'DUP-1', costPrice: 1, sellingPrice: 2 })).status).toBe(409);
+    expect(
+      (
+        await post(cashierCookie, '/products', {
+          name: 'X',
+          sku: 'X-1',
+          costPrice: 1,
+          sellingPrice: 2,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await post(owner.cookie, '/products', {
+          name: 'Again',
+          sku: 'DUP-1',
+          costPrice: 1,
+          sellingPrice: 2,
+        })
+      ).status,
+    ).toBe(409);
     for (const path of ['/products', '/reports/summary', '/audit-logs', '/ai/status']) {
-      expect((await request(app).get(`/api/v1${path}`).set('Cookie', owner.cookie)).status).toBe(200);
+      expect((await request(app).get(`/api/v1${path}`).set('Cookie', owner.cookie)).status).toBe(
+        200,
+      );
     }
-    expect((await post(owner.cookie, '/ai/ask', { question: 'What was my gross profit this week?' })).status).toBe(200);
+    expect(
+      (await post(owner.cookie, '/ai/ask', { question: 'What was my gross profit this week?' }))
+        .status,
+    ).toBe(200);
 
-    const sale = { idempotencyKey: 'audit-replay-0001', items: [{ productId, quantity: 1 }], payment: { method: 'CASH', amountTendered: 10 } };
+    const sale = {
+      idempotencyKey: 'audit-replay-0001',
+      items: [{ productId, quantity: 1 }],
+      payment: { method: 'CASH', amountTendered: 10 },
+    };
     expect((await post(cashierCookie, '/sales', sale)).status).toBe(201);
     expect((await post(cashierCookie, '/sales', sale)).status).toBe(200);
 
@@ -217,9 +339,18 @@ describe('viewing, filtering and protecting the log', () => {
     expect(page2.body.totalPages).toBe(Math.ceil(total / 2));
 
     const bad = [
-      '?action=Bad Action!', '?action=a.b.c', '?pageSize=1000', '?pageSize=0', '?page=0', '?from=2026-11-01',
-      '?from=2026-11-05&to=2026-11-01', '?from=2026-02-31&to=2026-03-01', '?from=2020-01-01&to=2026-11-01',
-      '?actorUserId=nope', '?resourceType=1;DROP', '?resourceId=%27',
+      '?action=Bad Action!',
+      '?action=a.b.c',
+      '?pageSize=1000',
+      '?pageSize=0',
+      '?page=0',
+      '?from=2026-11-01',
+      '?from=2026-11-05&to=2026-11-01',
+      '?from=2026-02-31&to=2026-03-01',
+      '?from=2020-01-01&to=2026-11-01',
+      '?actorUserId=nope',
+      '?resourceType=1;DROP',
+      '?resourceId=%27',
     ];
     for (const query of bad) {
       const res = await logs(owner.cookie, query);
@@ -227,9 +358,13 @@ describe('viewing, filtering and protecting the log', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     }
 
-    const actions = await request(app).get('/api/v1/audit-logs/actions').set('Cookie', owner.cookie);
+    const actions = await request(app)
+      .get('/api/v1/audit-logs/actions')
+      .set('Cookie', owner.cookie);
     expect(actions.status).toBe(200);
-    expect(actions.body.items.find((a: { action: string }) => a.action === 'product.create')).toMatchObject({
+    expect(
+      actions.body.items.find((a: { action: string }) => a.action === 'product.create'),
+    ).toMatchObject({
       label: 'Product created',
       category: 'product',
     });
@@ -242,21 +377,36 @@ describe('viewing, filtering and protecting the log', () => {
     expect(total).toBeGreaterThanOrEqual(2);
     const first = await prisma.auditLog.findFirstOrThrow();
 
-    await expect(prisma.auditLog.update({ where: { id: first.id }, data: { summary: 'tampered' } })).rejects.toThrow();
+    await expect(
+      prisma.auditLog.update({ where: { id: first.id }, data: { summary: 'tampered' } }),
+    ).rejects.toThrow();
     await expect(prisma.auditLog.updateMany({ data: { summary: 'tampered' } })).rejects.toThrow();
     await expect(prisma.auditLog.delete({ where: { id: first.id } })).rejects.toThrow();
     await expect(prisma.auditLog.deleteMany()).rejects.toThrow();
     await expect(prisma.$executeRawUnsafe('DELETE FROM "audit_logs"')).rejects.toThrow();
-    await expect(prisma.$executeRawUnsafe(`UPDATE "audit_logs" SET "summary" = 'tampered'`)).rejects.toThrow();
+    await expect(
+      prisma.$executeRawUnsafe(`UPDATE "audit_logs" SET "summary" = 'tampered'`),
+    ).rejects.toThrow();
     await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "audit_logs"')).rejects.toThrow();
 
     expect(await prisma.auditLog.count()).toBe(total);
-    expect((await prisma.auditLog.findUniqueOrThrow({ where: { id: first.id } })).summary).toBe(first.summary);
+    expect((await prisma.auditLog.findUniqueOrThrow({ where: { id: first.id } })).summary).toBe(
+      first.summary,
+    );
 
     const attempts = [
-      await request(app).post('/api/v1/audit-logs').set('Cookie', owner.cookie).send({ summary: 'x' }),
-      await request(app).patch(`/api/v1/audit-logs/${first.id}`).set('Cookie', owner.cookie).send({ summary: 'x' }),
-      await request(app).put(`/api/v1/audit-logs/${first.id}`).set('Cookie', owner.cookie).send({ summary: 'x' }),
+      await request(app)
+        .post('/api/v1/audit-logs')
+        .set('Cookie', owner.cookie)
+        .send({ summary: 'x' }),
+      await request(app)
+        .patch(`/api/v1/audit-logs/${first.id}`)
+        .set('Cookie', owner.cookie)
+        .send({ summary: 'x' }),
+      await request(app)
+        .put(`/api/v1/audit-logs/${first.id}`)
+        .set('Cookie', owner.cookie)
+        .send({ summary: 'x' }),
       await request(app).delete(`/api/v1/audit-logs/${first.id}`).set('Cookie', owner.cookie),
     ];
     for (const res of attempts) expect(res.status).toBe(404);
@@ -273,7 +423,9 @@ describe('viewing, filtering and protecting the log', () => {
 
     for (const cookie of [managerCookie, cashierCookie]) {
       expect((await logs(cookie)).status).toBe(403);
-      expect((await request(app).get('/api/v1/audit-logs/actions').set('Cookie', cookie)).status).toBe(403);
+      expect(
+        (await request(app).get('/api/v1/audit-logs/actions').set('Cookie', cookie)).status,
+      ).toBe(403);
     }
     expect((await request(app).get('/api/v1/audit-logs')).status).toBe(401);
     expect((await request(app).get('/api/v1/audit-logs/actions')).status).toBe(401);
@@ -289,7 +441,10 @@ describe('viewing, filtering and protecting the log', () => {
     expect(JSON.stringify(theirs.body)).not.toContain('Secret Product');
     expect(entries(theirs).every((e) => e.actorName !== 'Owner a')).toBe(true);
 
-    const forged = await request(app).get('/api/v1/audit-logs').set('Cookie', b.cookie).set('X-Store-Id', a.storeId);
+    const forged = await request(app)
+      .get('/api/v1/audit-logs')
+      .set('Cookie', b.cookie)
+      .set('X-Store-Id', a.storeId);
     expect(forged.status).toBe(403);
     const byActor = await logs(b.cookie, `?actorUserId=${a.userId}`);
     expect(byActor.body.total).toBe(0);

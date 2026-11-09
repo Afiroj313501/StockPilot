@@ -13,14 +13,23 @@ const info = (method: string, path: string, extra: Partial<RequestInfo> = {}): R
 
 describe('describeRequest: catalogue', () => {
   it('describes product, category and supplier changes by field name', () => {
-    expect(describeRequest(info('POST', '/api/v1/products', { response: { id: 'p1', name: 'Cola', sku: 'COLA-1' } }))).toEqual({
+    expect(
+      describeRequest(
+        info('POST', '/api/v1/products', { response: { id: 'p1', name: 'Cola', sku: 'COLA-1' } }),
+      ),
+    ).toEqual({
       action: 'product.create',
       resourceType: 'Product',
       resourceId: 'p1',
       summary: 'Created product "Cola" (COLA-1)',
     });
     expect(
-      describeRequest(info('PATCH', `/api/v1/products/${ID}`, { body: { sellingPrice: 3, name: 'x' }, response: { name: 'Cola' } })),
+      describeRequest(
+        info('PATCH', `/api/v1/products/${ID}`, {
+          body: { sellingPrice: 3, name: 'x' },
+          response: { name: 'Cola' },
+        }),
+      ),
     ).toEqual({
       action: 'product.update',
       resourceType: 'Product',
@@ -28,11 +37,39 @@ describe('describeRequest: catalogue', () => {
       summary: 'Updated product "Cola": name, sellingPrice',
       metadata: { fields: ['name', 'sellingPrice'] },
     });
-    expect(describeRequest(info('PATCH', `/api/v1/products/${ID}`, { body: { isActive: false }, response: { name: 'Cola', isActive: false } }))?.action).toBe('product.archive');
-    expect(describeRequest(info('PATCH', `/api/v1/products/${ID}`, { body: { isActive: true }, response: { name: 'Cola', isActive: true } }))?.action).toBe('product.restore');
-    expect(describeRequest(info('DELETE', `/api/v1/products/${ID}`))).toMatchObject({ action: 'product.delete', resourceId: ID });
-    expect(describeRequest(info('POST', '/api/v1/categories', { response: { id: 'c1', name: 'Drinks' } }))?.summary).toBe('Created category "Drinks"');
-    expect(describeRequest(info('PATCH', `/api/v1/suppliers/${ID}`, { body: { isActive: false }, response: { name: 'Acme', isActive: false } }))).toMatchObject({
+    expect(
+      describeRequest(
+        info('PATCH', `/api/v1/products/${ID}`, {
+          body: { isActive: false },
+          response: { name: 'Cola', isActive: false },
+        }),
+      )?.action,
+    ).toBe('product.archive');
+    expect(
+      describeRequest(
+        info('PATCH', `/api/v1/products/${ID}`, {
+          body: { isActive: true },
+          response: { name: 'Cola', isActive: true },
+        }),
+      )?.action,
+    ).toBe('product.restore');
+    expect(describeRequest(info('DELETE', `/api/v1/products/${ID}`))).toMatchObject({
+      action: 'product.delete',
+      resourceId: ID,
+    });
+    expect(
+      describeRequest(
+        info('POST', '/api/v1/categories', { response: { id: 'c1', name: 'Drinks' } }),
+      )?.summary,
+    ).toBe('Created category "Drinks"');
+    expect(
+      describeRequest(
+        info('PATCH', `/api/v1/suppliers/${ID}`, {
+          body: { isActive: false },
+          response: { name: 'Acme', isActive: false },
+        }),
+      ),
+    ).toMatchObject({
       action: 'supplier.archive',
       summary: 'Archived supplier "Acme"',
     });
@@ -44,7 +81,14 @@ describe('describeRequest: stock, purchasing and sales', () => {
     expect(
       describeRequest(
         info('POST', '/api/v1/inventory/movements', {
-          response: { productId: 'p1', productName: 'Cola', type: 'DAMAGED', quantityChange: -2, quantityBefore: 10, quantityAfter: 8 },
+          response: {
+            productId: 'p1',
+            productName: 'Cola',
+            type: 'DAMAGED',
+            quantityChange: -2,
+            quantityBefore: 10,
+            quantityAfter: 8,
+          },
         }),
       ),
     ).toEqual({
@@ -55,23 +99,48 @@ describe('describeRequest: stock, purchasing and sales', () => {
       metadata: { type: 'DAMAGED', quantityChange: -2, quantityBefore: 10, quantityAfter: 8 },
     });
 
-    const po = { id: 'po1', reference: 'PO-0001', supplierName: 'Acme', total: '9.75', status: 'PARTIALLY_RECEIVED' };
-    expect(describeRequest(info('POST', '/api/v1/purchases', { response: po }))?.summary).toBe('Created PO-0001 for "Acme" (total 9.75)');
-    expect(describeRequest(info('POST', `/api/v1/purchases/${ID}/submit`, { response: po }))).toMatchObject({
+    const po = {
+      id: 'po1',
+      reference: 'PO-0001',
+      supplierName: 'Acme',
+      total: '9.75',
+      status: 'PARTIALLY_RECEIVED',
+    };
+    expect(describeRequest(info('POST', '/api/v1/purchases', { response: po }))?.summary).toBe(
+      'Created PO-0001 for "Acme" (total 9.75)',
+    );
+    expect(
+      describeRequest(info('POST', `/api/v1/purchases/${ID}/submit`, { response: po })),
+    ).toMatchObject({
       action: 'purchase.submit',
       resourceId: ID,
       summary: 'Submitted PO-0001 for approval',
     });
-    expect(describeRequest(info('POST', `/api/v1/purchases/${ID}/approve`, { response: po }))?.summary).toBe('Approved PO-0001');
-    expect(describeRequest(info('POST', `/api/v1/purchases/${ID}/cancel`, { response: po }))?.summary).toBe('Cancelled PO-0001');
     expect(
-      describeRequest(info('POST', `/api/v1/purchases/${ID}/receive`, { body: { items: [{}, {}] }, response: po }))?.summary,
+      describeRequest(info('POST', `/api/v1/purchases/${ID}/approve`, { response: po }))?.summary,
+    ).toBe('Approved PO-0001');
+    expect(
+      describeRequest(info('POST', `/api/v1/purchases/${ID}/cancel`, { response: po }))?.summary,
+    ).toBe('Cancelled PO-0001');
+    expect(
+      describeRequest(
+        info('POST', `/api/v1/purchases/${ID}/receive`, {
+          body: { items: [{}, {}] },
+          response: po,
+        }),
+      )?.summary,
     ).toBe('Received stock on PO-0001 (2 line(s)); the order is now partially received');
 
     expect(
       describeRequest(
         info('POST', '/api/v1/sales', {
-          response: { id: 's1', reference: 'S-000001', total: '8.80', currency: 'USD', payments: [{ method: 'CASH' }] },
+          response: {
+            id: 's1',
+            reference: 'S-000001',
+            total: '8.80',
+            currency: 'USD',
+            payments: [{ method: 'CASH' }],
+          },
         }),
       ),
     ).toEqual({
@@ -84,7 +153,13 @@ describe('describeRequest: stock, purchasing and sales', () => {
     expect(
       describeRequest(
         info('POST', '/api/v1/returns', {
-          response: { id: 'r1', reference: 'R-000001', saleReference: 'S-000001', refundTotal: '8.80', refundMethod: 'CASH' },
+          response: {
+            id: 'r1',
+            reference: 'R-000001',
+            saleReference: 'S-000001',
+            refundTotal: '8.80',
+            refundMethod: 'CASH',
+          },
         }),
       )?.summary,
     ).toBe('Return R-000001 for S-000001: refund 8.80 (CASH)');
@@ -102,7 +177,9 @@ describe('describeRequest: stock, purchasing and sales', () => {
       summary: 'Created draft PO-0003 from the reorder planner',
       metadata: { productId: ID, quantity: 14 },
     });
-    expect(describeRequest(info('POST', `/api/v1/forecasting/products/${ID}/dismiss`))).toMatchObject({
+    expect(
+      describeRequest(info('POST', `/api/v1/forecasting/products/${ID}/dismiss`)),
+    ).toMatchObject({
       action: 'reorder.dismiss',
       resourceId: ID,
     });
@@ -126,14 +203,21 @@ describe('describeRequest: users, settings, exports and what is not audited', ()
     expect(JSON.stringify(created)).not.toContain('SecretPassword1');
     expect(JSON.stringify(created)).not.toContain('@');
 
-    expect(describeRequest(info('PATCH', `/api/v1/users/${ID}/role`, { response: { userId: ID, role: 'MANAGER' } }))?.summary).toBe(
-      'Changed the role of user 11111111 to MANAGER',
-    );
+    expect(
+      describeRequest(
+        info('PATCH', `/api/v1/users/${ID}/role`, { response: { userId: ID, role: 'MANAGER' } }),
+      )?.summary,
+    ).toBe('Changed the role of user 11111111 to MANAGER');
 
     expect(
       describeRequest(
         info('PATCH', '/api/v1/settings', {
-          body: { currency: 'EUR', taxRatePercent: 7.5, receiptFooter: 'Private note', address: '1 Secret St' },
+          body: {
+            currency: 'EUR',
+            taxRatePercent: 7.5,
+            receiptFooter: 'Private note',
+            address: '1 Secret St',
+          },
         }),
       ),
     ).toEqual({
@@ -147,10 +231,16 @@ describe('describeRequest: users, settings, exports and what is not audited', ()
       },
     });
 
-    expect(describeRequest(info('GET', '/api/v1/reports/export/sales', { query: { from: '2026-11-01', to: '2026-11-03' } }))?.summary).toBe(
-      'Downloaded the sales CSV (2026-11-01 to 2026-11-03)',
+    expect(
+      describeRequest(
+        info('GET', '/api/v1/reports/export/sales', {
+          query: { from: '2026-11-01', to: '2026-11-03' },
+        }),
+      )?.summary,
+    ).toBe('Downloaded the sales CSV (2026-11-01 to 2026-11-03)');
+    expect(describeRequest(info('GET', '/api/v1/reports/export/products'))?.summary).toBe(
+      'Downloaded the products CSV (the last 30 days)',
     );
-    expect(describeRequest(info('GET', '/api/v1/reports/export/products'))?.summary).toBe('Downloaded the products CSV (the last 30 days)');
 
     for (const [method, path] of [
       ['GET', '/api/v1/products'],

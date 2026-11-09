@@ -107,3 +107,13 @@ Reporting procedure and known limitations are added in Phase 13.
 - Known risks: prompt injection through product names is mitigated (cleaning, data-not-instructions
   prompt, no write access, grounding check) but not impossible; external providers see product and sales
   figures (documented in docs/AI.md).
+
+## Audit log (chunk 18)
+
+- Viewing requires OWNER and a verified store context (checked before any query); entries are scoped by storeId.
+- The log is append-only: no write endpoints, database triggers reject UPDATE, DELETE and TRUNCATE
+  (covered by tests, including direct SQL).
+- Secrets are never stored: passwords, tokens and keys do not reach the entry builders, metadata is sanitised,
+  and tests check that passwords and session tokens appear nowhere in the table.
+- Known gaps: fail-open writes (a logging problem cannot block a sale), 403s are not logged, the table owner
+  can bypass the triggers, and there is no retention policy (see docs/AUDIT.md).

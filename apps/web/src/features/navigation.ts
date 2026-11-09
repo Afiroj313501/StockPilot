@@ -8,6 +8,7 @@ import {
   RotateCcw,
   ShoppingCart,
   Settings,
+  ScrollText,
   Tags,
   Truck,
   TrendingUp,
@@ -40,4 +41,5 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/suppliers', label: 'Suppliers', icon: Truck, minRole: 'MANAGER' },
   { to: '/purchases', label: 'Purchases', icon: ShoppingCart, minRole: 'MANAGER' },
   { to: '/settings', label: 'Settings', icon: Settings, minRole: 'OWNER' },
+  { to: '/audit-log', label: 'Audit log', icon: ScrollText, minRole: 'OWNER' },
 ];

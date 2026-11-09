@@ -74,7 +74,10 @@ export async function recordFailedLogin(email: string, requestId?: string): Prom
   try {
     const user = await prisma.user.findUnique({ where: { email }, include: { memberships: true } });
     if (!user || user.memberships.length === 0) {
-      logger.warn({ event: 'auth.login_failed_unknown_account', requestId }, 'Failed sign-in for an unknown account');
+      logger.warn(
+        { event: 'auth.login_failed_unknown_account', requestId },
+        'Failed sign-in for an unknown account',
+      );
       return;
     }
     for (const m of user.memberships) {
@@ -103,7 +106,10 @@ export async function listAuditLogs(storeId: string, q: ListAuditQuery) {
   if (q.resourceId) where.resourceId = q.resourceId;
 
   if (q.from && q.to) {
-    const setting = await prisma.storeSetting.findUnique({ where: { storeId }, select: { timeZone: true } });
+    const setting = await prisma.storeSetting.findUnique({
+      where: { storeId },
+      select: { timeZone: true },
+    });
     const { start, end } = rangeToUtc(q.from, q.to, setting?.timeZone ?? 'UTC');
     where.createdAt = { gte: start, lt: end };
   }

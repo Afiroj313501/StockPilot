@@ -6,7 +6,8 @@ const MAX_JSON = 2000;
 
 function clean(value: unknown, depth: number): unknown {
   if (value === null) return null;
-  if (typeof value === 'string') return value.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, MAX_STRING);
+  if (typeof value === 'string')
+    return value.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, MAX_STRING);
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'boolean') return value;
   if (depth >= MAX_DEPTH) return undefined;

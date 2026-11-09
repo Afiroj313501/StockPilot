@@ -382,20 +382,18 @@ const reorderRecommendations = defineTool({
     return {
       today: r.today,
       counts: r.counts,
-      items: r.items
-        .slice(0, p.limit)
-        .map((i) => ({
-          name: clean(i.name),
-          sku: clean(i.sku),
-          status: i.status,
-          urgency: i.urgency,
-          confidence: i.confidence,
-          currentStock: i.currentStock,
-          incomingStock: i.incomingStock,
-          averageDailyDemand: i.averageDailyDemand,
-          daysOfCover: i.daysOfCover,
-          recommendedQuantity: i.recommendedQuantity,
-        })),
+      items: r.items.slice(0, p.limit).map((i) => ({
+        name: clean(i.name),
+        sku: clean(i.sku),
+        status: i.status,
+        urgency: i.urgency,
+        confidence: i.confidence,
+        currentStock: i.currentStock,
+        incomingStock: i.incomingStock,
+        averageDailyDemand: i.averageDailyDemand,
+        daysOfCover: i.daysOfCover,
+        recommendedQuantity: i.recommendedQuantity,
+      })),
     };
   },
   evidence: (_p, d) => ({

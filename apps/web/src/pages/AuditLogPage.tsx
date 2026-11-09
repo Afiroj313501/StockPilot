@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/ui/Pagination';
-import { useAuditActions, useAuditLogs, useMembers, type AuditFilters } from '../features/audit/hooks';
+import {
+  useAuditActions,
+  useAuditLogs,
+  useMembers,
+  type AuditFilters,
+} from '../features/audit/hooks';
 import { useSettings } from '../features/settings/hooks';
 import { formatDateTime } from '../lib/format';
 import type { AuditActionInfo, Role } from '../types/api';
@@ -62,8 +67,9 @@ export function AuditLogPage() {
       <div>
         <h1 className="text-2xl font-semibold text-navy-900">Audit log</h1>
         <p className="mt-1 text-sm text-slate-600">
-          A permanent record of important actions in your store. Entries cannot be edited or deleted. It shows
-          what happened and who did it, never passwords or other secrets. Times use {timeZone}.
+          A permanent record of important actions in your store. Entries cannot be edited or
+          deleted. It shows what happened and who did it, never passwords or other secrets. Times
+          use {timeZone}.
         </p>
       </div>
 
@@ -84,7 +90,9 @@ export function AuditLogPage() {
             <option value="">All events</option>
             {groups.map(([category, items]) => (
               <optgroup key={category} label={CATEGORY_LABEL[category] ?? category}>
-                <option value={category}>All {(CATEGORY_LABEL[category] ?? category).toLowerCase()} events</option>
+                <option value={category}>
+                  All {(CATEGORY_LABEL[category] ?? category).toLowerCase()} events
+                </option>
                 {items.map((a) => (
                   <option key={a.action} value={a.action}>
                     {a.label}
@@ -121,13 +129,25 @@ export function AuditLogPage() {
           <label htmlFor="audit-from" className="block text-sm font-medium text-navy-900">
             From
           </label>
-          <input id="audit-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={`${controlClass} mt-1`} />
+          <input
+            id="audit-from"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className={`${controlClass} mt-1`}
+          />
         </div>
         <div>
           <label htmlFor="audit-to" className="block text-sm font-medium text-navy-900">
             To
           </label>
-          <input id="audit-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className={`${controlClass} mt-1`} />
+          <input
+            id="audit-to"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className={`${controlClass} mt-1`}
+          />
         </div>
         <Button
           variant="secondary"
@@ -159,22 +179,32 @@ export function AuditLogPage() {
         </div>
       ) : logs.data.total === 0 ? (
         <div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
-          <p className="font-medium text-navy-900">{filtered ? 'No events match your filters.' : 'Nothing has been recorded yet.'}</p>
+          <p className="font-medium text-navy-900">
+            {filtered ? 'No events match your filters.' : 'Nothing has been recorded yet.'}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th scope="col" className="px-4 py-3 font-medium">When</th>
-                <th scope="col" className="px-4 py-3 font-medium">Who</th>
-                <th scope="col" className="px-4 py-3 font-medium">What happened</th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  When
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Who
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  What happened
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {logs.data.items.map((e) => (
                 <tr key={e.id} className="align-top">
-                  <td className="whitespace-nowrap px-4 py-3">{formatDateTime(e.createdAt, timeZone)}</td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    {formatDateTime(e.createdAt, timeZone)}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-navy-900">{e.actorName}</div>
                     <div className="text-xs text-slate-500">{ROLE_LABEL[e.actorRole]}</div>
@@ -206,7 +236,9 @@ export function AuditLogPage() {
                           Object.entries(e.metadata).map(([key, value]) => (
                             <div key={key} className="contents">
                               <dt>{key}</dt>
-                              <dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd>
+                              <dd>
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </dd>
                             </div>
                           ))}
                       </dl>
@@ -219,7 +251,12 @@ export function AuditLogPage() {
         </div>
       )}
       {logs.data && (
-        <Pagination page={logs.data.page} totalPages={logs.data.totalPages} total={logs.data.total} onPage={setPage} />
+        <Pagination
+          page={logs.data.page}
+          totalPages={logs.data.totalPages}
+          total={logs.data.total}
+          onPage={setPage}
+        />
       )}
     </div>
   );
