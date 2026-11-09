@@ -51,6 +51,7 @@ model User {
   sales Sale[]
   processedReturns SaleReturn[]
   reorderReviews ReorderReview[]
+  auditLogs AuditLog[]
 
   @@map("users")
 }
@@ -75,6 +76,7 @@ model Store {
   saleReturns      SaleReturn[]
   nextReturnNumber Int          @default(1)
   reorderReviews ReorderReview[]
+  auditLogs AuditLog[]
   nextPurchaseNumber Int             @default(1)
 
   @@map("stores")
@@ -484,4 +486,28 @@ model ReorderReview {
   @@unique([storeId, idempotencyKey])
   @@index([storeId, productId, createdAt])
   @@map("reorder_reviews")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  storeId      String
+  actorUserId  String
+  actorName    String // copied at the time, so renames never rewrite history
+  actorRole    Role // role at the time
+  action       String // e.g. product.create
+  resourceType String?
+  resourceId   String?
+  summary      String // short, safe, human-readable
+  metadata     Json? // small safe key-values; never secrets
+  requestId    String?
+  createdAt    DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  actor User  @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([storeId, createdAt])
+  @@index([storeId, action, createdAt])
+  @@index([storeId, resourceType, resourceId])
+  @@index([storeId, actorUserId, createdAt])
+  @@map("audit_logs")
 }
