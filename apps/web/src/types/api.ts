@@ -11,6 +11,35 @@ export interface Account {
   memberships: Membership[];
 }
 
+export interface AuditLogItem {
+  id: string;
+  createdAt: string;
+  actorUserId: string;
+  actorName: string;
+  actorRole: Role;
+  action: string;
+  label: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  summary: string;
+  metadata: Record<string, unknown> | null;
+  requestId: string | null;
+}
+
+export interface AuditActionInfo {
+  action: string;
+  label: string;
+  category: string;
+}
+
+export interface Member {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
 export interface AiEvidence {
   tool: string;
   label: string;
