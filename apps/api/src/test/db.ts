@@ -5,6 +5,10 @@ export async function resetDb(): Promise<void> {
   if (!/_test(\?|$)/.test(process.env.DATABASE_URL ?? '')) {
     throw new Error('Refusing to reset a database whose name does not end in _test');
   }
+  await prisma.$transaction([
+    prisma.$queryRaw`SELECT set_config('stockpilot.audit_maintenance', 'on', true)`,
+    prisma.auditLog.deleteMany(),
+  ]);
   await prisma.session.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.reorderReview.deleteMany();
