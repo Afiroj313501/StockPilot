@@ -15,7 +15,13 @@ describe('parseImport: columns and values', () => {
       'skip',
       ctx(),
     );
-    expect(plan.columns.recognized).toEqual(['sku', 'name', 'costPrice', 'sellingPrice', 'category']);
+    expect(plan.columns.recognized).toEqual([
+      'sku',
+      'name',
+      'costPrice',
+      'sellingPrice',
+      'category',
+    ]);
     expect(plan.columns.ignored).toEqual([
       { column: 'Stock', reason: expect.stringContaining('not imported') },
       { column: 'Colour', reason: expect.stringContaining('Unknown') },
@@ -112,7 +118,14 @@ describe('parseImport: existing products, duplicates and categories', () => {
 
   it('skips existing SKUs by default and flags barcode and SKU conflicts', () => {
     const plan = parseImport(csv, 'skip', context);
-    expect(plan.rows.map((r) => r.status)).toEqual(['SKIP', 'ERROR', 'CREATE', 'ERROR', 'ERROR', 'ERROR']);
+    expect(plan.rows.map((r) => r.status)).toEqual([
+      'SKIP',
+      'ERROR',
+      'CREATE',
+      'ERROR',
+      'ERROR',
+      'ERROR',
+    ]);
     expect(plan.summary).toEqual({
       rows: 6,
       create: 1,
@@ -130,8 +143,21 @@ describe('parseImport: existing products, duplicates and categories', () => {
 
   it('updates existing SKUs in update mode, with only the filled-in columns, and matches categories by name', () => {
     const plan = parseImport(csv, 'update', context);
-    expect(plan.rows.map((r) => r.status)).toEqual(['UPDATE', 'ERROR', 'CREATE', 'ERROR', 'ERROR', 'ERROR']);
-    expect(plan.summary).toMatchObject({ create: 1, update: 1, skip: 0, errors: 4, newCategories: ['Snacks'] });
+    expect(plan.rows.map((r) => r.status)).toEqual([
+      'UPDATE',
+      'ERROR',
+      'CREATE',
+      'ERROR',
+      'ERROR',
+      'ERROR',
+    ]);
+    expect(plan.summary).toMatchObject({
+      create: 1,
+      update: 1,
+      skip: 0,
+      errors: 4,
+      newCategories: ['Snacks'],
+    });
     expect(plan.rows[0]).toMatchObject({
       existingId: 'p1',
       data: { name: 'Cola 2', costPrice: 0.6, sellingPrice: 1.5, categoryName: 'drinks' },

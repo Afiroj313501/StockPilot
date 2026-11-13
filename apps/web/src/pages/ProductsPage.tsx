@@ -46,13 +46,27 @@ export function ProductsPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Products</h1>
         {canManage && (
-          <Link
-            to="/products/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Add product
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="/api/v1/products/export?status=all"
+              className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50"
+            >
+              Export CSV
+            </a>
+            <Link
+              to="/products/import"
+              className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50"
+            >
+              Import CSV
+            </Link>
+            <Link
+              to="/products/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Add product
+            </Link>
+          </div>
         )}
       </div>
       <div className="mt-6 flex flex-wrap gap-3">

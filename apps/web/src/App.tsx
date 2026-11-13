@@ -9,6 +9,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ProductFormPage } from './pages/ProductFormPage';
+import { ProductsImportPage } from './pages/ProductsImportPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { SuppliersPage } from './pages/SuppliersPage';
@@ -41,6 +42,7 @@ export function App() {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/sales/:id" element={<SaleDetailPage />} />
             <Route element={<RequireRole minRole="MANAGER" />}>
+              <Route path="/products/import" element={<ProductsImportPage />} />
               <Route path="/products/new" element={<ProductFormPage />} />
               <Route path="/products/:id/edit" element={<ProductFormPage />} />
               <Route path="/categories" element={<CategoriesPage />} />

@@ -153,6 +153,44 @@ export interface ProductPayload {
   reorderThreshold: number | null;
 }
 
+export interface ImportIssue {
+  line: number;
+  column: string | null;
+  message: string;
+}
+
+export interface ImportRow {
+  line: number;
+  sku: string;
+  name: string | null;
+  status: 'CREATE' | 'UPDATE' | 'SKIP' | 'ERROR';
+  messages: string[];
+}
+
+export interface ImportReport {
+  canImport: boolean;
+  summary: {
+    rows: number;
+    create: number;
+    update: number;
+    skip: number;
+    errors: number;
+    newCategories: string[];
+  };
+  columns: { recognized: string[]; ignored: { column: string; reason: string }[] };
+  rows: ImportRow[];
+  rowsTruncated: boolean;
+  issues: ImportIssue[];
+  issuesTruncated: boolean;
+}
+
+export interface ImportResult {
+  created: number;
+  updated: number;
+  skipped: number;
+  categoriesCreated: number;
+}
+
 export type MovementType =
   'OPENING' | 'RECEIPT' | 'SALE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGED' | 'LOST' | 'RECONCILIATION';
 

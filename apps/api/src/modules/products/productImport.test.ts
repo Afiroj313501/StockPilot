@@ -49,7 +49,11 @@ const runImport = (cookie: string, csv: string, existing?: 'skip' | 'update', ta
 const exportCsv = (cookie: string, query = '') =>
   request(app).get(`/api/v1/products/export${query}`).set('Cookie', cookie);
 
-const lines = (text: string) => text.replace(/^\uFEFF/, '').trim().split('\r\n');
+const lines = (text: string) =>
+  text
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .split('\r\n');
 
 describe('product import and export', () => {
   it('previews without writing, imports products and exports a safe catalog', async () => {
@@ -119,7 +123,9 @@ describe('product import and export', () => {
   it('enforces manager access, validation and payload limits', async () => {
     const t = await team();
     expect((await preview(t.cashierCookie, GOOD)).status).toBe(403);
-    expect((await request(app).post('/api/v1/products/import').send({ csv: GOOD })).status).toBe(401);
+    expect((await request(app).post('/api/v1/products/import').send({ csv: GOOD })).status).toBe(
+      401,
+    );
 
     const invalid = await preview(t.managerCookie, 'sku,name\n"A,B');
     expect(invalid.status).toBe(200);

@@ -117,3 +117,14 @@ Reporting procedure and known limitations are added in Phase 13.
   and tests check that passwords and session tokens appear nowhere in the table.
 - Known gaps: fail-open writes (a logging problem cannot block a sale), 403s are not logged, the table owner
   can bypass the triggers, and there is no retention policy (see docs/AUDIT.md).
+
+## CSV import and export (chunk 19)
+
+- Export, check and import require MANAGER or OWNER and a verified store context (checked before the body is read);
+  everything is scoped by storeId. The import router is mounted before the products router, with guards on each route,
+  so other product routes keep their own permissions (covered by a test).
+- Input limits: 750,000 characters, 2,000 rows, 20 columns, 1 MB body (clean 413), per-user rate limit.
+- The file is parsed by our own parser and never executed. Text cells starting with a formula character are
+  neutralised on export, and only that exact guard is removed on import.
+- The import re-validates on the server and is all-or-nothing in one transaction under a per-store advisory lock;
+  it can never write stock, and imports and exports are audit-logged.

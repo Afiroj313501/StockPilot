@@ -12,10 +12,25 @@ describe('parseCsv', () => {
     ]);
     expect(parsed.lines).toEqual([1, 2, 3]);
 
-    expect(parseCsv('a;b\n1;2')).toMatchObject({ delimiter: ';', rows: [['a', 'b'], ['1', '2']] });
-    expect(parseCsv('a\tb\n1\t2')).toMatchObject({ delimiter: '\t', rows: [['a', 'b'], ['1', '2']] });
+    expect(parseCsv('a;b\n1;2')).toMatchObject({
+      delimiter: ';',
+      rows: [
+        ['a', 'b'],
+        ['1', '2'],
+      ],
+    });
+    expect(parseCsv('a\tb\n1\t2')).toMatchObject({
+      delimiter: '\t',
+      rows: [
+        ['a', 'b'],
+        ['1', '2'],
+      ],
+    });
     expect(parseCsv('a,b\n1').rows).toEqual([['a', 'b'], ['1']]);
-    expect(parseCsv('a,b\n,,\n  ,\n1,2').rows).toEqual([['a', 'b'], ['1', '2']]);
+    expect(parseCsv('a,b\n,,\n  ,\n1,2').rows).toEqual([
+      ['a', 'b'],
+      ['1', '2'],
+    ]);
     expect(parseCsv('').rows).toEqual([]);
   });
 
