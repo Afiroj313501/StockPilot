@@ -40,6 +40,21 @@ export function errorHandler(
   if (
     typeof err === 'object' &&
     err !== null &&
+    (err as { type?: string }).type === 'entity.too.large'
+  ) {
+    res.status(413).json({
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'The request is too large. Split the file into smaller parts.',
+        requestId,
+      },
+    });
+    return;
+  }
+
+  if (
+    typeof err === 'object' &&
+    err !== null &&
     (err as { type?: string }).type === 'entity.parse.failed'
   ) {
     res

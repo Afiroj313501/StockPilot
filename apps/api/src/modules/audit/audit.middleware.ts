@@ -59,8 +59,10 @@ async function capture(
 export function createAuditTrail(write: AuditWriter = recordAudit): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
     const method = req.method.toUpperCase();
-    const audited =
-      MUTATING.has(method) || (method === 'GET' && req.path.startsWith('/api/v1/reports/export/'));
+    const exportGet =
+      method === 'GET' &&
+      (req.path.startsWith('/api/v1/reports/export/') || req.path === '/api/v1/products/export');
+    const audited = MUTATING.has(method) || exportGet;
     if (!audited) return next();
 
     const originalEnd = res.end.bind(res) as (...args: unknown[]) => Response;

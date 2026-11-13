@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS: AuditActionInfo[] = [
   { action: 'product.archive', label: 'Product archived', category: 'product' },
   { action: 'product.restore', label: 'Product restored', category: 'product' },
   { action: 'product.delete', label: 'Product deleted', category: 'product' },
+  { action: 'product.import', label: 'Products imported from CSV', category: 'product' },
   { action: 'supplier.create', label: 'Supplier created', category: 'supplier' },
   { action: 'supplier.update', label: 'Supplier changed', category: 'supplier' },
   { action: 'supplier.archive', label: 'Supplier archived', category: 'supplier' },

@@ -123,6 +123,31 @@ const RULES: Rule[] = [
   },
   {
     method: 'POST',
+    re: route('/products/import'),
+    build: (_m, _r, res) =>
+      d(
+        'product.import',
+        'Product',
+        null,
+        `Imported products from CSV: ${show(res.created)} created, ${show(res.updated)} updated, ${show(res.skipped)} skipped`,
+        {
+          created: res.created,
+          updated: res.updated,
+          skipped: res.skipped,
+          categoriesCreated: res.categoriesCreated,
+        },
+      ),
+  },
+  {
+    method: 'GET',
+    re: route('/products/export'),
+    build: () =>
+      d('export.download', null, null, 'Downloaded the product catalog CSV', {
+        kind: 'product-catalog',
+      }),
+  },
+  {
+    method: 'POST',
     re: route('/categories'),
     build: (_m, _r, res) =>
       d('category.create', 'Category', res.id, `Created category "${clean(res.name)}"`),
