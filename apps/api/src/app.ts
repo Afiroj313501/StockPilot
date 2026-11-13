@@ -14,6 +14,7 @@ import { usersRouter } from './modules/users/users.routes';
 import { settingsRouter } from './modules/settings/settings.routes';
 import { categoriesRouter } from './modules/categories/categories.routes';
 import { productsRouter } from './modules/products/products.routes';
+import { createProductImportRouter } from './modules/products/import.routes';
 import { inventoryRouter } from './modules/inventory/inventory.routes';
 import { suppliersRouter } from './modules/suppliers/suppliers.routes';
 import { purchasesRouter } from './modules/purchases/purchases.routes';
@@ -31,6 +32,7 @@ import type { AuditWriter } from './modules/audit/audit.service';
 export interface AppOptions {
   authRateLimitMax?: number;
   aiRateLimitMax?: number;
+  importRateLimitMax?: number;
   auditWriter?: AuditWriter;
   // undefined = decide from the environment, null = built-in answers only (used by tests)
   aiProvider?: AiProvider | null;
@@ -59,12 +61,14 @@ export function createApp(options: AppOptions = {}) {
           timeoutMs: env.AI_TIMEOUT_MS,
         };
   const aiLimiter = createUserLimiter(options.aiRateLimitMax ?? 20);
+  const importLimiter = createUserLimiter(options.importRateLimitMax ?? 20);
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/auth', createAuthRouter(authLimiter));
   app.use('/api/v1/stores', storesRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/settings', settingsRouter);
   app.use('/api/v1/categories', categoriesRouter);
+  app.use('/api/v1/products', createProductImportRouter({ limiter: importLimiter }));
   app.use('/api/v1/products', productsRouter);
   app.use('/api/v1/inventory', inventoryRouter);
   app.use('/api/v1/suppliers', suppliersRouter);
