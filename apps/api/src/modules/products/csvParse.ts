@@ -66,7 +66,10 @@ export function parseCsv(
       rows.push(row);
       lines.push(rowLine);
       if (rows.length > limits.maxRows + 1) {
-        throw new CsvError(`Too many rows: the file can have at most ${limits.maxRows} data rows`, rowLine);
+        throw new CsvError(
+          `Too many rows: the file can have at most ${limits.maxRows} data rows`,
+          rowLine,
+        );
       }
     }
     row = [];
@@ -95,7 +98,8 @@ export function parseCsv(
       throw new CsvError('Unexpected text after a closing quote', line);
     }
     if (ch === '"') {
-      if (field !== '') throw new CsvError('A quote must start a value: put the whole value in quotes', line);
+      if (field !== '')
+        throw new CsvError('A quote must start a value: put the whole value in quotes', line);
       inQuotes = true;
       continue;
     }
