@@ -33,3 +33,26 @@ export function createUserLimiter(limit: number, windowMs = 15 * 60 * 1000) {
     },
   });
 }
+
+// Limits FAILED sign-ins per account (email), whatever the IP address. Successful sign-ins never count.
+// Place it after the body is validated, so the email is already trimmed and lower-cased.
+export function createLoginAccountLimiter(limit: number, windowMs = 15 * 60 * 1000) {
+  return rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) =>
+      `account:${String((req.body as { email?: unknown } | undefined)?.email ?? 'none').toLowerCase()}`,
+    handler: (_req, _res, next) => {
+      next(
+        new AppError(
+          429,
+          'RATE_LIMITED',
+          'Too many failed sign-in attempts for this account. Please wait a few minutes and try again.',
+        ),
+      );
+    },
+  });
+}

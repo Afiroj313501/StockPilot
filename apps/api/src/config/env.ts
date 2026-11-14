@@ -15,6 +15,7 @@ const envSchema = z.object({
   AI_MODEL: z.string().optional(),
   AI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(15000),
+  TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
 });
 
 export type Env = z.infer<typeof envSchema>;

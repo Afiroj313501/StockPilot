@@ -5,9 +5,14 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { originGuard } from './middleware/originGuard';
-import { createAuthLimiter, createUserLimiter } from './middleware/rateLimit';
+import {
+  createAuthLimiter,
+  createLoginAccountLimiter,
+  createUserLimiter,
+} from './middleware/rateLimit';
 import { requestId } from './middleware/requestId';
 import { createAuthRouter } from './modules/auth/auth.routes';
+import { requireAuth } from './modules/auth/auth.middleware';
 import { healthRouter } from './modules/health/health.routes';
 import { storesRouter } from './modules/stores/stores.routes';
 import { usersRouter } from './modules/users/users.routes';
@@ -33,6 +38,9 @@ export interface AppOptions {
   authRateLimitMax?: number;
   aiRateLimitMax?: number;
   importRateLimitMax?: number;
+  heavyRateLimitMax?: number;
+  loginAccountLimitMax?: number;
+  trustProxy?: number; // number of reverse proxies in front of the API; default from TRUST_PROXY
   auditWriter?: AuditWriter;
   // undefined = decide from the environment, null = built-in answers only (used by tests)
   aiProvider?: AiProvider | null;
@@ -40,6 +48,7 @@ export interface AppOptions {
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
+  app.set('trust proxy', options.trustProxy ?? env.TRUST_PROXY);
 
   app.disable('x-powered-by');
   app.use(requestId);
@@ -49,8 +58,15 @@ export function createApp(options: AppOptions = {}) {
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use(createAuditTrail(options.auditWriter));
+  // API responses can hold private business data: browsers and proxies must never cache them.
+  app.use('/api/v1', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
 
   const authLimiter = createAuthLimiter(options.authRateLimitMax ?? 10);
+  const heavyLimiter = createUserLimiter(options.heavyRateLimitMax ?? 300);
+  const accountLimiter = createLoginAccountLimiter(options.loginAccountLimitMax ?? 10);
   const envAi = resolveProvider(env);
   const aiStatus = (): ProviderStatus =>
     options.aiProvider === undefined
@@ -63,7 +79,7 @@ export function createApp(options: AppOptions = {}) {
   const aiLimiter = createUserLimiter(options.aiRateLimitMax ?? 20);
   const importLimiter = createUserLimiter(options.importRateLimitMax ?? 20);
   app.use('/api/v1/health', healthRouter);
-  app.use('/api/v1/auth', createAuthRouter(authLimiter));
+  app.use('/api/v1/auth', createAuthRouter(authLimiter, accountLimiter));
   app.use('/api/v1/stores', storesRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/settings', settingsRouter);
@@ -75,10 +91,10 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/v1/purchases', purchasesRouter);
   app.use('/api/v1/sales', salesRouter);
   app.use('/api/v1/returns', returnsRouter);
-  app.use('/api/v1/reports', reportsRouter);
-  app.use('/api/v1/forecasting', forecastingRouter);
+  app.use('/api/v1/reports', requireAuth, heavyLimiter, reportsRouter);
+  app.use('/api/v1/forecasting', requireAuth, heavyLimiter, forecastingRouter);
   app.use('/api/v1/ai', createAiRouter({ limiter: aiLimiter, getStatus: aiStatus }));
-  app.use('/api/v1/audit-logs', auditRouter);
+  app.use('/api/v1/audit-logs', requireAuth, heavyLimiter, auditRouter);
 
   app.use(notFound);
   app.use(errorHandler);

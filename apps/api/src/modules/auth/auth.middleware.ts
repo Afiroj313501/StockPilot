@@ -5,6 +5,10 @@ import { resolveSession, type AuthContext } from './auth.service';
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    if (res.locals.auth) {
+      next();
+      return;
+    }
     const token: unknown = req.cookies?.[SESSION_COOKIE];
     if (typeof token !== 'string' || token.length === 0) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Authentication required');
