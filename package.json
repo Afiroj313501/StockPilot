@@ -18,7 +18,10 @@
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "scan:secrets:selftest": "node scripts/scan-secrets.mjs --self-test",
+    "audit:deps": "npm audit --omit=dev --audit-level=high"
   },
   "devDependencies": {
     "prettier": "^3.3.3"

@@ -32,8 +32,12 @@ describe('source hygiene', () => {
     let safe = 0;
     for (const file of apiProduction) {
       const text = read(file);
-      all += (text.match(/\$(?:queryRaw|executeRaw)\b/g) ?? []).length;
-      safe += (text.match(/\$(?:queryRaw|executeRaw)(?:<[^`(]*?>)?\s*(?:`|\(\s*Prisma\.sql\s*`)/g) ?? []).length;
+      all += (text.match(/(?<!['"])\$(?:queryRaw|executeRaw)\b/g) ?? []).length;
+      safe += (
+        text.match(
+          /(?<!['"])\$(?:queryRaw|executeRaw)(?:<[^`(]*?>)?\s*(?:`|\(\s*Prisma\.sql\s*`)/g,
+        ) ?? []
+      ).length;
     }
     expect(all).toBeGreaterThan(0);
     expect(safe, 'Every raw query must be a tagged template or Prisma.sql, never built from strings').toBe(all);

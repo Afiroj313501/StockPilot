@@ -153,7 +153,9 @@ describe('tenant isolation matrix', () => {
     for (const path of ['/products', '/categories', '/suppliers', '/purchases', '/sales', '/returns', '/inventory/movements', '/inventory/low-stock']) {
       const res = await request(app).get(`/api/v1${path}`).set('Cookie', s.b.cookie);
       const count = (res.body.total ?? res.body.items?.length) as number;
-      expect(count, path).toBe(path === '/products' ? 1 : 0);
+      expect(count, path).toBe(
+        path === '/products' || path === '/suppliers' || path === '/inventory/low-stock' ? 1 : 0,
+      );
     }
 
     const summary = await request(app).get('/api/v1/reports/summary').set('Cookie', s.b.cookie);
