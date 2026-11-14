@@ -16,7 +16,11 @@ const PATTERNS = [
   ['Google API key', /\bAIza[0-9A-Za-z_-]{35}\b/],
   ['JSON Web Token', /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/],
   ['Database URL with a password', /postgres(?:ql)?:\/\/[^:\s/]+:([^@\s]+)@/, 1],
-  ['Hard-coded secret', /\b(?:api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['"]([^'"\s]{12,})['"]/i, 1],
+  [
+    'Hard-coded secret',
+    /\b(?:api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['"]([^'"\s]{12,})['"]/i,
+    1,
+  ],
 ];
 
 // Values that are obviously examples, placeholders or test data.
@@ -99,7 +103,9 @@ function scanRepository() {
       if (pattern.test(file)) problems.push(`${file}: ${reason} is tracked by Git`);
     }
     if (/\.sql$/i.test(file) && !file.startsWith('apps/api/prisma/migrations/')) {
-      problems.push(`${file}: SQL file outside the migrations folder (database dumps must not be committed)`);
+      problems.push(
+        `${file}: SQL file outside the migrations folder (database dumps must not be committed)`,
+      );
     }
     if (SKIP_FILE.test(file)) continue;
     let text;
