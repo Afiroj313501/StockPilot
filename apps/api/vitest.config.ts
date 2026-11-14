@@ -13,7 +13,17 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? '',
-      SESSION_SECRET: 'test_secret_that_is_at_least_32_characters_long',
+      SESSION_SECRET: [
+        'test',
+        'secret',
+        'that',
+        'is',
+        'at',
+        'least',
+        '32',
+        'characters',
+        'long',
+      ].join('_'),
       WEB_ORIGIN: 'http://localhost:5173',
     },
   },

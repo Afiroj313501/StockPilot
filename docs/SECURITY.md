@@ -1,130 +1,108 @@
-# Security risks and tests
+# Security
 
-| Risk                            | Mitigation                                   | Test (phase)                             |
-| ------------------------------- | -------------------------------------------- | ---------------------------------------- |
-| Cross-store data access (IDOR)  | storeId on every query, membership check     | Cross-store tests on every resource (3+) |
-| Role bypass via direct API call | Server-side RBAC middleware                  | Cashier hits owner endpoints -> 403 (3)  |
-| Duplicate sale on retry         | Idempotency key + transaction                | Repeat POST creates one sale (7)         |
-| Double stock receipt            | Receipt idempotency, remaining-qty check     | Repeat receipt rejected (6)              |
-| Negative or racing stock        | Transaction + row lock                       | Concurrent sales test (5, 7)             |
-| Browser-trusted totals          | Server recomputes all money                  | Tampered total ignored (7)               |
-| SQL injection                   | Prisma, no raw SQL, AI has no SQL access     | Injection strings rejected (13)          |
-| Secrets leakage                 | .env ignored, secret scan, no secret logging | Secret scan in CI (13)                   |
-| AI data leakage                 | Approved read-only store-scoped tools only   | AI cross-store test (11)                 |
-| Brute-force login               | Rate limiting                                | Lockout/429 test (3)                     |
+StockPilot AI is multi-user retail software that holds business data, so security is part of every feature.
+This document describes what the product does, how it is verified, and what it does NOT do.
 
-Reporting procedure and known limitations are added in Phase 13.
+## Reporting a vulnerability
 
-## Authentication (implemented in Phase 3, chunk 4)
+Report security problems privately to **SECURITY_CONTACT** (replace this placeholder with your real contact
+before release). Please include steps to reproduce and do not publish details until a fix is available.
 
-- Server-side sessions: random 256-bit token in an httpOnly, SameSite=Lax cookie
-  (Secure in production). Only the SHA-256 hash is stored. Sessions expire after 7 days.
-- Passwords hashed with bcrypt (cost 12). Login timing does not reveal whether an email exists.
-- CSRF: SameSite=Lax plus Origin / Sec-Fetch-Site check on state-changing requests.
-- Rate limit: 10 register/login attempts per 15 minutes per IP (in-memory; per server instance).
-- Known gaps (planned): audit logging of auth events (Phase 12), password reset and
-  email verification (not in the initial release), and `trust proxy` setup behind a
-  reverse proxy (Phase 14).
+## Authentication and sessions
 
-## Authorization and tenant isolation (chunk 5)
+- Sign-in with email and password. Passwords are hashed with bcrypt (cost 12), 10 to 72 characters.
+- A session is a random 256-bit token in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production, so it needs HTTPS).
+  Only the SHA-256 hash of the token is stored. Sessions last 7 days; logout deletes the session on the server.
+- Sign-in answers are identical for an unknown email and a wrong password, with similar timing.
+- Throttling: register and sign-in are limited per IP; **failed** sign-ins are also limited per account
+  (default 10 per 15 minutes). Successful sign-ins never count.
+- Not included in the initial release: two-factor sign-in, password reset, email verification, idle timeout.
 
-- Active store comes from the optional `X-Store-Id` header, resolved only against the
-  caller's own memberships. A missing or foreign store ID returns the same 403.
-- Roles are ranked CASHIER < MANAGER < OWNER and enforced by `requireRole` on the server.
-- Queries on store-owned data must always include the `storeId` from the verified store
-  context, never an ID taken from the request. A lookup scoped to the store turns another
-  store's record into not found.
-- User management is owner-only. Owners cannot change their own role or another owner's
-  role, and OWNER cannot be assigned through the API.
-- Known limitations: an email belongs to one account (no multi-store membership yet);
-  no user deactivation endpoint yet; role and user changes are not audit-logged until
-  Phase 12.
+## Authorization (roles)
 
-## Catalog authorization (chunk 8)
+Roles: CASHIER < MANAGER < OWNER, enforced **on the server** for every route (hiding a button is not security).
 
-- Every product and category query includes the `storeId` from the verified store
-  context. Updates and deletes scope both ID and store, so another store's record
-  is not found.
-- Category IDs in requests are checked against the caller's store before use.
-- Request bodies are strict; `storeId`, `stockQuantity`, and unknown keys are rejected.
-- Sorting by cost is not offered, so cashiers cannot infer cost order.
+| Area                                                                                                                   | Lowest role |
+| ---------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Point of sale, own sales, product list (cost hidden), store settings (read)                                            | Cashier     |
+| Products, categories, suppliers, stock, purchasing, returns, reports, reorder planner, AI assistant, CSV import/export | Manager     |
+| Approve purchase orders, delete products, store settings (change), users and roles, audit log                          | Owner       |
 
-## Inventory ledger (chunk 9)
+A test lists every route of the API with its minimum role and fails if a route is added without being listed
+([routeMatrix.test.ts](../apps/api/src/test/routeMatrix.test.ts)). It also proves each route refuses lower roles and unauthenticated calls.
 
-- All inventory endpoints require MANAGER or OWNER and a verified store context.
-- Product lookups are scoped by `storeId`; another store's product ID returns 404.
-- Request bodies are strict: `storeId`, `quantityBefore`, and `actorUserId` are
-  rejected.
-- Row locking and idempotency keys prevent overselling and double-applied retries.
-- A database trigger does not yet block direct SQL edits to `stock_movements`;
-  `GET /inventory/integrity` detects drift between the ledger and product quantities.
+## Tenant isolation
 
-## Receiving (chunk 12)
+Every store-owned row has a `storeId`. The active store is resolved only from the caller's own memberships;
+a forged `X-Store-Id` gets 403. Queries always include the verified store id, so another store's record is
+"not found" (404). Ids inside request bodies (categories, suppliers, products, sales) are checked against the caller's store.
+[isolation.matrix.test.ts](../apps/api/src/test/isolation.matrix.test.ts) has a second store attack every id-based route of the first.
 
-- Receiving requires MANAGER or OWNER and a verified store context; the order lookup is scoped by
-  storeId (another store's order is 404). Request bodies are strict.
-- Row locking (order, then products in id order) and idempotency keys prevent double-applied or
-  over-received stock (covered by concurrency tests, including receive versus cancel).
-- Stock changes from receiving always go through the ledger, so `GET /inventory/integrity` still reconciles.
+## Data integrity
 
-## Point of sale (chunk 13)
+- Money: exact decimals (database `Decimal`, integer cents in calculations); totals, tax and refunds are computed on the server.
+- Stock: every change goes through the append-only-style inventory ledger inside a transaction with row locks.
+- Idempotency keys make retries and double clicks safe (sales, receipts, returns, stock movements, planner drafts).
+- Historical records are snapshots; products and suppliers are archived, not deleted; database foreign keys restrict deletion.
 
-- Totals are never accepted from the browser: bodies are strict, so `total`, `unitPrice`, `storeId`,
-  `cashierId` and similar fields are rejected. `expectedTotal` is only a safety check (409 on mismatch).
-- Product lookups are scoped by storeId (another store's product is "invalid"); sale reads are scoped
-  by storeId, and cashiers are further limited to their own sales (404 otherwise).
-- Row locks plus idempotency keys prevent overselling and double sales (covered by concurrency tests).
-- Discounts require MANAGER or OWNER. Known gap: no configurable cashier discount limit yet.
+## Input validation and files
 
-## Returns (chunk 14)
+- Every request body is validated with strict schemas (unknown fields are rejected, so `storeId`, totals or stock cannot be injected).
+- CSV import: 750,000 characters, 2,000 rows, 20 columns; two-step (check, then all-or-nothing import);
+  stock is never imported; formula-looking text is neutralised on export. Bodies over 1 MB get HTTP 413.
+- SQL: Prisma, plus raw queries only as parameterised tagged templates (a test enforces this).
+- Browser: React escapes output; no `dangerouslySetInnerHTML`, `eval` or browser storage (a test enforces this).
 
-- Every returns endpoint requires MANAGER or OWNER and a verified store context (checked before any
-  validation or database access); cashiers get 403 everywhere.
-- Sale lookups are scoped by storeId (another store's sale is 404). Request bodies are strict, so
-  `refundTotal`, `refundAmount`, `storeId` and similar fields are rejected; refunds are always
-  calculated by the server from the sale's saved figures.
-- A row lock on the sale plus idempotency keys prevent over-returning and double refunds (covered by
-  concurrency tests). Damaged items cannot be restocked through the API.
+## Abuse protection
 
-## Reports and exports (chunk 15)
+| Endpoint group                      | Limit                                                  |
+| ----------------------------------- | ------------------------------------------------------ |
+| Register, sign-in                   | 10 per 15 min per IP; 10 failed per 15 min per account |
+| Reports, reorder planner, audit log | 300 per 15 min per user                                |
+| AI assistant questions              | 20 per 15 min per user                                 |
+| CSV check and import                | 20 per 15 min per user                                 |
 
-- All report and export endpoints require MANAGER or OWNER and a verified store context (checked
-  before validation or database access); cashiers get 403. Every query is scoped by storeId.
-- Report queries use parameterised SQL only; the time zone and dates are bound parameters.
-- CSV exports neutralise spreadsheet formulas in text cells. Known gap: exports are not audit-logged
-  until Phase 12.
+Limits are kept in memory per API instance (they reset on restart and are not shared across instances).
+Behind a reverse proxy set `TRUST_PROXY=1` so limits use the real client address.
 
-## AI assistant (chunk 17)
+## Browser security
 
-- Endpoints require MANAGER or OWNER and a verified store context (checked before the rate limiter,
-  validation or any lookup). Rate limit: 20 questions per user per 15 minutes.
-- The model only reaches data through eight read-only lookups that re-check the role, validate strictly
-  and use the caller's store (covered by tests for other-store product ids, extra `storeId` parameters,
-  unknown tools and invalid values). There is no SQL access.
-- Model output is validated and grounded against the lookup results; failures fall back to built-in answers.
-- The API key is read from the environment only; it is not sent to the browser, returned or logged.
-  Provider errors are mapped to fixed messages and never include provider response bodies.
-- Known risks: prompt injection through product names is mitigated (cleaning, data-not-instructions
-  prompt, no write access, grounding check) but not impossible; external providers see product and sales
-  figures (documented in docs/AI.md).
+- Helmet headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`, HSTS, `Referrer-Policy`); `X-Powered-By` removed.
+- CORS allows only `WEB_ORIGIN`, with credentials.
+- CSRF: `SameSite=Lax` cookie plus an `Origin` / `Sec-Fetch-Site` check on every state-changing request.
+- Every API response carries `Cache-Control: no-store`.
+- Errors return a safe code, message and request id; stack traces and database errors are never returned.
 
-## Audit log (chunk 18)
+## Secrets and configuration
 
-- Viewing requires OWNER and a verified store context (checked before any query); entries are scoped by storeId.
-- The log is append-only: no write endpoints, database triggers reject UPDATE, DELETE and TRUNCATE
-  (covered by tests, including direct SQL).
-- Secrets are never stored: passwords, tokens and keys do not reach the entry builders, metadata is sanitised,
-  and tests check that passwords and session tokens appear nowhere in the table.
-- Known gaps: fail-open writes (a logging problem cannot block a sale), 403s are not logged, the table owner
-  can bypass the triggers, and there is no retention policy (see docs/AUDIT.md).
+- Secrets come from environment variables, validated at start-up (invalid configuration stops the server and names the
+  variable, never its value). `.env` is git-ignored; `.env.example` holds placeholders only.
+- Never logged: passwords, session tokens, cookies, authorization headers, API keys, AI question text.
+- `npm run scan:secrets` scans tracked files; CI runs it on every push.
 
-## CSV import and export (chunk 19)
+## AI assistant
 
-- Export, check and import require MANAGER or OWNER and a verified store context (checked before the body is read);
-  everything is scoped by storeId. The import router is mounted before the products router, with guards on each route,
-  so other product routes keep their own permissions (covered by a test).
-- Input limits: 750,000 characters, 2,000 rows, 20 columns, 1 MB body (clean 413), per-user rate limit.
-- The file is parsed by our own parser and never executed. Text cells starting with a formula character are
-  neutralised on export, and only that exact guard is removed on import.
-- The import re-validates on the server and is all-or-nothing in one transaction under a per-store advisory lock;
-  it can never write stock, and imports and exports are audit-logged.
+Optional. Read-only, store-scoped lookups only; no SQL access; model output is validated and every number is checked
+against the lookup results. With a provider configured, the question and lookup results (product names, SKUs, sales and
+stock figures) are sent to that provider; staff and customer names, emails and the store name are not. See [AI.md](./AI.md).
+
+## Audit log
+
+Append-only (no endpoints, plus database triggers that reject UPDATE, DELETE and TRUNCATE), owner-only, scoped by store;
+never stores secrets or request bodies. See [AUDIT.md](./AUDIT.md).
+
+## Dependencies and supply chain
+
+`package-lock.json` is committed. Before each release run `npm audit --omit=dev`, `npm run scan:secrets` and a licence check, and
+record the results in [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). CI fails on high or critical vulnerabilities in production dependencies.
+
+## Known limitations and accepted risks
+
+- No two-factor sign-in, password reset or email verification; sessions last 7 days without an idle timeout and cannot be
+  revoked all at once.
+- CSRF relies on `SameSite=Lax` and the origin check rather than per-request tokens.
+- A per-account sign-in limit lets an attacker lock an account for up to 15 minutes.
+- Rate limits are per instance and in memory.
+- Audit entries are written after the action's own transaction (a failure to write is logged, not fatal), and the database
+  owner can disable the audit triggers: protect database credentials and keep backups.
+- Users cannot be deactivated from the UI yet (planned).

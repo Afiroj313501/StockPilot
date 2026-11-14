@@ -98,8 +98,8 @@ function listRoutes(target: Express): string[] {
   const found = new Set<string>();
   for (const layer of root) {
     if (layer.name !== 'router' || !layer.handle.stack) continue;
-    const mount = layer.regexp
-      .source.replace(/^\^/, '')
+    const mount = layer.regexp.source
+      .replace(/^\^/, '')
       .replace('\\/?(?=\\/|$)', '')
       .replace(/\\\//g, '/');
     for (const inner of layer.handle.stack) {
@@ -142,7 +142,8 @@ describe('route inventory and permissions', () => {
     for (const [key, min] of Object.entries(MATRIX)) {
       if (min === 'PUBLIC') continue;
       const res = await call(key.split(' ')[0]!, pathOf(key));
-      if (res.status !== 401) problems.push(`${key} answered ${res.status} without a session (expected 401)`);
+      if (res.status !== 401)
+        problems.push(`${key} answered ${res.status} without a session (expected 401)`);
     }
     expect(problems).toEqual([]);
   });

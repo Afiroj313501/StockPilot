@@ -41,10 +41,7 @@ async function fixture() {
   const b = await registerOwner(app, 'b');
 
   const category = (
-    await request(app)
-      .post('/api/v1/categories')
-      .set('Cookie', a.cookie)
-      .send({ name: 'Drinks' })
+    await request(app).post('/api/v1/categories').set('Cookie', a.cookie).send({ name: 'Drinks' })
   ).body.id as string;
   const supplier = await createSupplier(app, a.cookie);
   const product = await createProduct(app, a.cookie, {
@@ -62,7 +59,10 @@ async function fixture() {
     await request(app)
       .post('/api/v1/purchases')
       .set('Cookie', a.cookie)
-      .send({ supplierId: supplier, items: [{ productId: product, quantityOrdered: 5, unitCost: 4 }] })
+      .send({
+        supplierId: supplier,
+        items: [{ productId: product, quantityOrdered: 5, unitCost: 4 }],
+      })
   ).body.id as string;
   const sale = (
     await request(app)
@@ -96,7 +96,8 @@ describe('tenant isolation matrix', () => {
       po: await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: s.po } }),
       category: await prisma.category.findUniqueOrThrow({ where: { id: s.category } }),
       supplier: await prisma.supplier.findUniqueOrThrow({ where: { id: s.supplier } }),
-      role: (await prisma.storeMembership.findFirstOrThrow({ where: { userId: s.manager.userId } })).role,
+      role: (await prisma.storeMembership.findFirstOrThrow({ where: { userId: s.manager.userId } }))
+        .role,
       movements: await prisma.stockMovement.count(),
       reviews: await prisma.reorderReview.count(),
     };
@@ -115,13 +116,43 @@ describe('tenant isolation matrix', () => {
       ['POST', `/purchases/${s.po}/submit`, undefined, 404],
       ['POST', `/purchases/${s.po}/approve`, undefined, 404],
       ['POST', `/purchases/${s.po}/cancel`, {}, 404],
-      ['POST', `/purchases/${s.po}/receive`, { idempotencyKey: key(), items: [{ productId: s.product, quantity: 1 }] }, 404],
+      [
+        'POST',
+        `/purchases/${s.po}/receive`,
+        { idempotencyKey: key(), items: [{ productId: s.product, quantity: 1 }] },
+        404,
+      ],
       ['GET', `/sales/${s.sale}`, undefined, 404],
       ['GET', `/returns/${s.ret}`, undefined, 404],
       ['GET', `/returns/by-sale/${s.sale}`, undefined, 404],
-      ['POST', '/returns/preview', { saleId: s.sale, items: [{ productId: s.product, quantity: 1 }] }, 404],
-      ['POST', '/returns', { saleId: s.sale, idempotencyKey: key(), items: [{ productId: s.product, quantity: 1, restock: true, reason: 'OTHER' }] }, 404],
-      ['POST', '/inventory/movements', { productId: s.product, type: 'ADJUSTMENT', quantity: 5, reason: 'x', idempotencyKey: key() }, 404],
+      [
+        'POST',
+        '/returns/preview',
+        { saleId: s.sale, items: [{ productId: s.product, quantity: 1 }] },
+        404,
+      ],
+      [
+        'POST',
+        '/returns',
+        {
+          saleId: s.sale,
+          idempotencyKey: key(),
+          items: [{ productId: s.product, quantity: 1, restock: true, reason: 'OTHER' }],
+        },
+        404,
+      ],
+      [
+        'POST',
+        '/inventory/movements',
+        {
+          productId: s.product,
+          type: 'ADJUSTMENT',
+          quantity: 5,
+          reason: 'x',
+          idempotencyKey: key(),
+        },
+        404,
+      ],
       ['GET', `/forecasting/products/${s.product}`, undefined, 404],
       ['POST', `/forecasting/products/${s.product}/approve`, { idempotencyKey: key() }, 404],
       ['POST', `/forecasting/products/${s.product}/dismiss`, {}, 404],
@@ -132,15 +163,26 @@ describe('tenant isolation matrix', () => {
     const problems: string[] = [];
     for (const [method, path, body, expected] of attempts) {
       const res = await call(method, `/api/v1${path}`, s.b.cookie, body);
-      if (res.status !== expected) problems.push(`${method} ${path} -> ${res.status} (expected ${expected})`);
+      if (res.status !== expected)
+        problems.push(`${method} ${path} -> ${res.status} (expected ${expected})`);
     }
     expect(problems).toEqual([]);
 
-    expect(await prisma.product.findUniqueOrThrow({ where: { id: s.product } })).toEqual(before.product);
-    expect(await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: s.po } })).toEqual(before.po);
-    expect(await prisma.category.findUniqueOrThrow({ where: { id: s.category } })).toEqual(before.category);
-    expect(await prisma.supplier.findUniqueOrThrow({ where: { id: s.supplier } })).toEqual(before.supplier);
-    expect((await prisma.storeMembership.findFirstOrThrow({ where: { userId: s.manager.userId } })).role).toBe(before.role);
+    expect(await prisma.product.findUniqueOrThrow({ where: { id: s.product } })).toEqual(
+      before.product,
+    );
+    expect(await prisma.purchaseOrder.findUniqueOrThrow({ where: { id: s.po } })).toEqual(
+      before.po,
+    );
+    expect(await prisma.category.findUniqueOrThrow({ where: { id: s.category } })).toEqual(
+      before.category,
+    );
+    expect(await prisma.supplier.findUniqueOrThrow({ where: { id: s.supplier } })).toEqual(
+      before.supplier,
+    );
+    expect(
+      (await prisma.storeMembership.findFirstOrThrow({ where: { userId: s.manager.userId } })).role,
+    ).toBe(before.role);
     expect(await prisma.stockMovement.count()).toBe(before.movements);
     expect(await prisma.reorderReview.count()).toBe(before.reviews);
   });
@@ -150,7 +192,16 @@ describe('tenant isolation matrix', () => {
     const ownSupplier = await createSupplier(app, s.b.cookie);
     const ownProduct = await createProduct(app, s.b.cookie, { name: 'Mine', sku: 'MINE-1' });
 
-    for (const path of ['/products', '/categories', '/suppliers', '/purchases', '/sales', '/returns', '/inventory/movements', '/inventory/low-stock']) {
+    for (const path of [
+      '/products',
+      '/categories',
+      '/suppliers',
+      '/purchases',
+      '/sales',
+      '/returns',
+      '/inventory/movements',
+      '/inventory/low-stock',
+    ]) {
       const res = await request(app).get(`/api/v1${path}`).set('Cookie', s.b.cookie);
       const count = (res.body.total ?? res.body.items?.length) as number;
       expect(count, path).toBe(
@@ -165,12 +216,20 @@ describe('tenant isolation matrix', () => {
     const dashboard = await request(app).get('/api/v1/reports/dashboard').set('Cookie', s.b.cookie);
     expect(dashboard.body.recentSales).toEqual([]);
     expect(dashboard.body.topProducts).toEqual([]);
-    const byProduct = await request(app).get(`/api/v1/audit-logs?resourceId=${s.product}`).set('Cookie', s.b.cookie);
+    const byProduct = await request(app)
+      .get(`/api/v1/audit-logs?resourceId=${s.product}`)
+      .set('Cookie', s.b.cookie);
     expect(byProduct.body.total).toBe(0);
-    const byActor = await request(app).get(`/api/v1/audit-logs?actorUserId=${s.a.userId}`).set('Cookie', s.b.cookie);
+    const byActor = await request(app)
+      .get(`/api/v1/audit-logs?actorUserId=${s.a.userId}`)
+      .set('Cookie', s.b.cookie);
     expect(byActor.body.total).toBe(0);
-    const trail = await request(app).get('/api/v1/audit-logs?pageSize=100').set('Cookie', s.b.cookie);
-    expect(trail.body.items.every((e: { actorUserId: string }) => e.actorUserId === s.b.userId)).toBe(true);
+    const trail = await request(app)
+      .get('/api/v1/audit-logs?pageSize=100')
+      .set('Cookie', s.b.cookie);
+    expect(
+      trail.body.items.every((e: { actorUserId: string }) => e.actorUserId === s.b.userId),
+    ).toBe(true);
 
     const foreignCategory = await call('POST', '/api/v1/products', s.b.cookie, {
       name: 'X',
@@ -179,17 +238,26 @@ describe('tenant isolation matrix', () => {
       sellingPrice: 2,
       categoryId: s.category,
     });
-    expect([foreignCategory.status, foreignCategory.body.error.code]).toEqual([400, 'INVALID_CATEGORY']);
+    expect([foreignCategory.status, foreignCategory.body.error.code]).toEqual([
+      400,
+      'INVALID_CATEGORY',
+    ]);
     const foreignSupplier = await call('POST', '/api/v1/purchases', s.b.cookie, {
       supplierId: s.supplier,
       items: [{ productId: ownProduct, quantityOrdered: 1, unitCost: 1 }],
     });
-    expect([foreignSupplier.status, foreignSupplier.body.error.code]).toEqual([400, 'INVALID_SUPPLIER']);
+    expect([foreignSupplier.status, foreignSupplier.body.error.code]).toEqual([
+      400,
+      'INVALID_SUPPLIER',
+    ]);
     const foreignProduct = await call('POST', '/api/v1/purchases', s.b.cookie, {
       supplierId: ownSupplier,
       items: [{ productId: s.product, quantityOrdered: 1, unitCost: 1 }],
     });
-    expect([foreignProduct.status, foreignProduct.body.error.code]).toEqual([400, 'INVALID_PRODUCT']);
+    expect([foreignProduct.status, foreignProduct.body.error.code]).toEqual([
+      400,
+      'INVALID_PRODUCT',
+    ]);
     const foreignSale = await call('POST', '/api/v1/sales', s.b.cookie, {
       idempotencyKey: nextKey(),
       items: [{ productId: s.product, quantity: 1 }],

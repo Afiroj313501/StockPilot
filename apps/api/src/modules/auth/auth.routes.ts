@@ -8,7 +8,10 @@ import { getAuth, requireAuth } from './auth.middleware';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from './auth.schemas';
 import { getAccount, login, logout, registerOwner, resolveSession } from './auth.service';
 
-export function createAuthRouter(authLimiter: RequestHandler, accountLimiter: RequestHandler): Router {
+export function createAuthRouter(
+  authLimiter: RequestHandler,
+  accountLimiter: RequestHandler,
+): Router {
   const router = Router();
   router.post(
     '/register',

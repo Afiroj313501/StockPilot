@@ -25,7 +25,9 @@ const read = (file: string) => fs.readFileSync(file, 'utf8');
 
 describe('source hygiene', () => {
   it('uses raw SQL only through parameterised tagged templates', () => {
-    const unsafe = apiProduction.filter((f) => /\$(?:queryRawUnsafe|executeRawUnsafe)/.test(read(f)));
+    const unsafe = apiProduction.filter((f) =>
+      /\$(?:queryRawUnsafe|executeRawUnsafe)/.test(read(f)),
+    );
     expect(unsafe, 'Unsafe raw SQL helpers are not allowed in application code').toEqual([]);
 
     let all = 0;
@@ -40,7 +42,10 @@ describe('source hygiene', () => {
       ).length;
     }
     expect(all).toBeGreaterThan(0);
-    expect(safe, 'Every raw query must be a tagged template or Prisma.sql, never built from strings').toBe(all);
+    expect(
+      safe,
+      'Every raw query must be a tagged template or Prisma.sql, never built from strings',
+    ).toBe(all);
   });
 
   it('avoids dangerous browser and runtime APIs, and browser storage', () => {
@@ -55,11 +60,14 @@ describe('source hygiene', () => {
     for (const file of [...apiAll, ...webAll]) {
       if (file.endsWith('/hygiene.test.ts')) continue;
       const text = read(file);
-      for (const [name, pattern] of banned) if (pattern.test(text)) problems.push(`${file}: ${name}`);
+      for (const [name, pattern] of banned)
+        if (pattern.test(text)) problems.push(`${file}: ${name}`);
     }
     for (const file of webAll) {
       if (/\b(?:localStorage|sessionStorage)\b/.test(read(file))) {
-        problems.push(`${file}: browser storage (sessions use an HttpOnly cookie; if you need it for harmless preferences, update this test)`);
+        problems.push(
+          `${file}: browser storage (sessions use an HttpOnly cookie; if you need it for harmless preferences, update this test)`,
+        );
       }
     }
     expect(problems).toEqual([]);

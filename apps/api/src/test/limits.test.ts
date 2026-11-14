@@ -28,7 +28,8 @@ describe('abuse protection', () => {
       return cookie ? req.set('Cookie', cookie) : req;
     };
     expect((await get('/api/v1/reports/summary')).status).toBe(401);
-    for (let i = 0; i < 3; i++) expect((await get('/api/v1/reports/summary', managerCookie)).status).toBe(200);
+    for (let i = 0; i < 3; i++)
+      expect((await get('/api/v1/reports/summary', managerCookie)).status).toBe(200);
 
     const blocked = await get('/api/v1/reports/summary', managerCookie);
     expect(blocked.status).toBe(429);
@@ -39,7 +40,11 @@ describe('abuse protection', () => {
   });
 
   it('limits failed sign-ins per account, whatever the address, and successful ones never count', async () => {
-    const limited = createApp({ authRateLimitMax: 1000, loginAccountLimitMax: 3, aiProvider: null });
+    const limited = createApp({
+      authRateLimitMax: 1000,
+      loginAccountLimitMax: 3,
+      aiProvider: null,
+    });
     const a = await registerOwner(limited, 'a');
     const b = await registerOwner(limited, 'b');
     const login = (email: string, password: string) =>

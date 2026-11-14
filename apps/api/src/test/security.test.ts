@@ -71,14 +71,12 @@ describe('browser-facing security', () => {
   });
 
   it('issues an HttpOnly, SameSite session cookie, keeps the token out of the response and clears it on logout', async () => {
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .send({
-        name: 'Owner',
-        email: 'cookie@example.com',
-        password: PASSWORD,
-        storeName: 'Cookie Store',
-      });
+    const res = await request(app).post('/api/v1/auth/register').send({
+      name: 'Owner',
+      email: 'cookie@example.com',
+      password: PASSWORD,
+      storeName: 'Cookie Store',
+    });
     expect(res.status).toBe(201);
     const header = (res.headers['set-cookie'] as unknown as string[]).find((c) =>
       c.startsWith('sp_session='),
