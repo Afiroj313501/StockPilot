@@ -40,6 +40,7 @@ export interface AppOptions {
   importRateLimitMax?: number;
   heavyRateLimitMax?: number;
   loginAccountLimitMax?: number;
+  passwordChangeLimitMax?: number;
   trustProxy?: number; // number of reverse proxies in front of the API; default from TRUST_PROXY
   auditWriter?: AuditWriter;
   // undefined = decide from the environment, null = built-in answers only (used by tests)
@@ -67,6 +68,7 @@ export function createApp(options: AppOptions = {}) {
   const authLimiter = createAuthLimiter(options.authRateLimitMax ?? 10);
   const heavyLimiter = createUserLimiter(options.heavyRateLimitMax ?? 300);
   const accountLimiter = createLoginAccountLimiter(options.loginAccountLimitMax ?? 10);
+  const passwordLimiter = createUserLimiter(options.passwordChangeLimitMax ?? 10);
   const envAi = resolveProvider(env);
   const aiStatus = (): ProviderStatus =>
     options.aiProvider === undefined
@@ -79,7 +81,7 @@ export function createApp(options: AppOptions = {}) {
   const aiLimiter = createUserLimiter(options.aiRateLimitMax ?? 20);
   const importLimiter = createUserLimiter(options.importRateLimitMax ?? 20);
   app.use('/api/v1/health', healthRouter);
-  app.use('/api/v1/auth', createAuthRouter(authLimiter, accountLimiter));
+  app.use('/api/v1/auth', createAuthRouter(authLimiter, accountLimiter, passwordLimiter));
   app.use('/api/v1/stores', storesRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/settings', settingsRouter);

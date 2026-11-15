@@ -23,6 +23,9 @@ import { ReturnsPage } from './pages/ReturnsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ReorderPage } from './pages/ReorderPage';
 import { AssistantPage } from './pages/AssistantPage';
+import { AccountPage } from './pages/AccountPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { UsersPage } from './pages/UsersPage';
 import { PublicOnly, RequireAuth, RequireOnboarding, RequireRole } from './routes/guards';
 
 export function App() {
@@ -33,11 +36,13 @@ export function App() {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
       <Route element={<RequireAuth />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route element={<RequireOnboarding />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/pos" element={<PosPage />} />
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/sales/:id" element={<SaleDetailPage />} />
@@ -59,6 +64,7 @@ export function App() {
             </Route>
             <Route element={<RequireRole minRole="OWNER" />}>
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/users" element={<UsersPage />} />
               <Route path="/audit-log" element={<AuditLogPage />} />
             </Route>
           </Route>

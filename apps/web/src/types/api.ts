@@ -7,7 +7,7 @@ export interface Membership {
 }
 
 export interface Account {
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; mustChangePassword: boolean };
   memberships: Membership[];
 }
 
@@ -38,6 +38,7 @@ export interface Member {
   email: string;
   role: Role;
   isActive: boolean;
+  mustChangePassword: boolean;
 }
 
 export interface AiEvidence {

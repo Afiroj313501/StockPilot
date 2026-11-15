@@ -43,7 +43,8 @@ export const recordAudit: AuditWriter = async (e) => {
 
 export async function recordAuthEvent(input: {
   userId: string;
-  action: 'auth.register' | 'auth.login' | 'auth.logout';
+  action:
+    'auth.register' | 'auth.login' | 'auth.logout' | 'auth.password_change' | 'auth.profile_update';
   summary: string;
   requestId?: string | undefined;
 }): Promise<void> {

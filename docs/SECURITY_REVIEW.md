@@ -4,17 +4,17 @@ Review date: 2026-11-14 Reviewer: Copilot Version / commit: bb02462055f749736590
 
 ## Findings and fixes
 
-| ID   | Finding                                                       | Severity   | Status | Fix                                  | Verification             |
-| ---- | ------------------------------------------------------------- | ---------- | ------ | ------------------------------------ | ------------------------ |
-| F-01 | Sign-in limited per IP only                                   | Medium     | Fixed  | Per-account limit on failed sign-ins | limits.test.ts           |
-| F-02 | API responses cacheable                                       | Low        | Fixed  | `Cache-Control: no-store` on /api/v1 | security.test.ts         |
-| F-03 | Rate limits keyed to the proxy address behind a reverse proxy | Medium     | Fixed  | `TRUST_PROXY` setting                | limits.test.ts           |
-| F-04 | Expensive read endpoints unthrottled                          | Low-Medium | Fixed  | Per-user limit after authentication  | limits.test.ts           |
-| F-05 | New routes could ship without auth or role checks             | Process    | Fixed  | Route inventory + role matrix tests  | routeMatrix.test.ts      |
-| F-06 | Tenant isolation tested per module only                       | Process    | Fixed  | Cross-store attack matrix            | isolation.matrix.test.ts |
-| F-07 | Unsafe raw SQL / dangerous browser APIs not guarded           | Process    | Fixed  | Source hygiene tests                 | hygiene.test.ts          |
-| F-08 | No dependency or secret scanning                              | Process    | Fixed  | Scanner script, CI steps             | `npm run scan:secrets`   |
-| F-09 | No user deactivation or users screen                          | Medium     | Open   | Planned for the next chunk           |                          |
+| ID   | Finding                                                       | Severity   | Status | Fix                                                   | Verification             |
+| ---- | ------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------- | ------------------------ |
+| F-01 | Sign-in limited per IP only                                   | Medium     | Fixed  | Per-account limit on failed sign-ins                  | limits.test.ts           |
+| F-02 | API responses cacheable                                       | Low        | Fixed  | `Cache-Control: no-store` on /api/v1                  | security.test.ts         |
+| F-03 | Rate limits keyed to the proxy address behind a reverse proxy | Medium     | Fixed  | `TRUST_PROXY` setting                                 | limits.test.ts           |
+| F-04 | Expensive read endpoints unthrottled                          | Low-Medium | Fixed  | Per-user limit after authentication                   | limits.test.ts           |
+| F-05 | New routes could ship without auth or role checks             | Process    | Fixed  | Route inventory + role matrix tests                   | routeMatrix.test.ts      |
+| F-06 | Tenant isolation tested per module only                       | Process    | Fixed  | Cross-store attack matrix                             | isolation.matrix.test.ts |
+| F-07 | Unsafe raw SQL / dangerous browser APIs not guarded           | Process    | Fixed  | Source hygiene tests                                  | hygiene.test.ts          |
+| F-08 | No dependency or secret scanning                              | Process    | Fixed  | Scanner script, CI steps                              | `npm run scan:secrets`   |
+| F-09 | No user deactivation or users screen                          | Medium     | Fixed  | Users screen, deactivation, password reset and change | users.manage.test.ts     |
 
 ## Accepted risks
 

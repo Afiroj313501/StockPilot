@@ -5,12 +5,30 @@ import { AppError } from '../../utils/httpError';
 import { recordAuthEvent, recordFailedLogin } from '../audit/audit.service';
 import { clearSessionCookie, SESSION_COOKIE, setSessionCookie } from './auth.cookies';
 import { getAuth, requireAuth } from './auth.middleware';
-import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from './auth.schemas';
-import { getAccount, login, logout, registerOwner, resolveSession } from './auth.service';
+import {
+  changePasswordSchema,
+  loginSchema,
+  profileSchema,
+  registerSchema,
+  type ChangePasswordInput,
+  type LoginInput,
+  type ProfileInput,
+  type RegisterInput,
+} from './auth.schemas';
+import {
+  changePassword,
+  getAccount,
+  login,
+  logout,
+  registerOwner,
+  resolveSession,
+  updateProfile,
+} from './auth.service';
 
 export function createAuthRouter(
   authLimiter: RequestHandler,
   accountLimiter: RequestHandler,
+  passwordLimiter: RequestHandler,
 ): Router {
   const router = Router();
   router.post(
@@ -47,9 +65,8 @@ export function createAuthRouter(
         });
         res.json(await getAccount(userId));
       } catch (err) {
-        if (err instanceof AppError && err.code === 'INVALID_CREDENTIALS') {
+        if (err instanceof AppError && err.code === 'INVALID_CREDENTIALS')
           await recordFailedLogin(input.email, res.locals.requestId);
-        }
         throw err;
       }
     }),
@@ -60,14 +77,13 @@ export function createAuthRouter(
       const token: unknown = req.cookies?.[SESSION_COOKIE];
       if (typeof token === 'string' && token.length > 0) {
         const auth = await resolveSession(token);
-        if (auth) {
+        if (auth)
           await recordAuthEvent({
             userId: auth.user.id,
             action: 'auth.logout',
             summary: 'Signed out',
             requestId: res.locals.requestId,
           });
-        }
         await logout(token);
       }
       clearSessionCookie(res);
@@ -78,5 +94,39 @@ export function createAuthRouter(
     const auth = getAuth(res);
     res.json({ user: auth.user, memberships: auth.memberships });
   });
+  router.post(
+    '/change-password',
+    requireAuth,
+    passwordLimiter,
+    validateBody(changePasswordSchema),
+    asyncHandler(async (req, res) => {
+      const auth = getAuth(res);
+      const input = req.body as ChangePasswordInput;
+      await changePassword(auth.user.id, auth.sessionId, input.currentPassword, input.newPassword);
+      await recordAuthEvent({
+        userId: auth.user.id,
+        action: 'auth.password_change',
+        summary: 'Changed their password',
+        requestId: res.locals.requestId,
+      });
+      res.status(204).end();
+    }),
+  );
+  router.patch(
+    '/profile',
+    requireAuth,
+    validateBody(profileSchema),
+    asyncHandler(async (req, res) => {
+      const auth = getAuth(res);
+      await updateProfile(auth.user.id, (req.body as ProfileInput).name);
+      await recordAuthEvent({
+        userId: auth.user.id,
+        action: 'auth.profile_update',
+        summary: 'Changed their name',
+        requestId: res.locals.requestId,
+      });
+      res.json(await getAccount(auth.user.id));
+    }),
+  );
   return router;
 }

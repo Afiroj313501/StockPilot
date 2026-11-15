@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useActiveMembership, useMe } from '../features/auth/hooks';
 import { hasRole } from '../features/navigation';
@@ -29,9 +29,12 @@ export function ConnectionError({ onRetry }: { onRetry: () => void }) {
 
 export function RequireAuth() {
   const me = useMe();
+  const location = useLocation();
   if (me.isPending) return <LoadingScreen />;
   if (me.isError) return <ConnectionError onRetry={() => void me.refetch()} />;
   if (!me.data) return <Navigate to="/login" replace />;
+  if (me.data.user.mustChangePassword && location.pathname !== '/change-password')
+    return <Navigate to="/change-password" replace />;
   return <Outlet />;
 }
 

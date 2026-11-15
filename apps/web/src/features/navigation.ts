@@ -13,6 +13,8 @@ import {
   Truck,
   TrendingUp,
   Sparkles,
+  UserCircle,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import type { Role } from '../types/api';
@@ -42,4 +44,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/purchases', label: 'Purchases', icon: ShoppingCart, minRole: 'MANAGER' },
   { to: '/settings', label: 'Settings', icon: Settings, minRole: 'OWNER' },
   { to: '/audit-log', label: 'Audit log', icon: ScrollText, minRole: 'OWNER' },
+  { to: '/users', label: 'Users', icon: Users, minRole: 'OWNER' },
+  { to: '/account', label: 'My account', icon: UserCircle, minRole: 'CASHIER' },
 ];

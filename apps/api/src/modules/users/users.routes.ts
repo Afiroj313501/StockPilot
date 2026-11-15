@@ -7,11 +7,19 @@ import { getStore, requireStore } from '../auth/store.middleware';
 import {
   changeRoleSchema,
   createMemberSchema,
+  statusSchema,
   userIdParam,
   type ChangeRoleInput,
   type CreateMemberInput,
+  type StatusInput,
 } from './users.schemas';
-import { changeMemberRole, createMember, listMembers } from './users.service';
+import {
+  changeMemberRole,
+  createMember,
+  listMembers,
+  resetMemberPassword,
+  setMemberActive,
+} from './users.service';
 
 export const usersRouter = Router();
 
@@ -46,5 +54,25 @@ usersRouter.patch(
       role,
     );
     res.json(result);
+  }),
+);
+
+usersRouter.patch(
+  '/:userId/status',
+  validateBody(statusSchema),
+  asyncHandler(async (req, res) => {
+    const targetUserId = userIdParam.parse(req.params.userId);
+    const { isActive } = req.body as StatusInput;
+    res.json(
+      await setMemberActive(getStore(res).storeId, getAuth(res).user.id, targetUserId, isActive),
+    );
+  }),
+);
+
+usersRouter.post(
+  '/:userId/reset-password',
+  asyncHandler(async (req, res) => {
+    const targetUserId = userIdParam.parse(req.params.userId);
+    res.json(await resetMemberPassword(getStore(res).storeId, getAuth(res).user.id, targetUserId));
   }),
 );

@@ -16,7 +16,8 @@ before release). Please include steps to reproduce and do not publish details un
 - Sign-in answers are identical for an unknown email and a wrong password, with similar timing.
 - Throttling: register and sign-in are limited per IP; **failed** sign-ins are also limited per account
   (default 10 per 15 minutes). Successful sign-ins never count.
-- Not included in the initial release: two-factor sign-in, password reset, email verification, idle timeout.
+- Owners manage staff accounts: create, change role, deactivate (sessions end at once) and reset a password (a random temporary password, shown once, which must be changed at the next sign-in). Anyone can change their own password, which ends their other sessions (10 attempts per 15 minutes). An operator command recovers a forgotten owner password ([USER_MANAGEMENT.md](./USER_MANAGEMENT.md)).
+- Not included in the initial release: two-factor sign-in, email-based password reset, email verification, idle timeout.
 
 ## Authorization (roles)
 
@@ -98,11 +99,10 @@ record the results in [SECURITY_REVIEW.md](./SECURITY_REVIEW.md). CI fails on hi
 
 ## Known limitations and accepted risks
 
-- No two-factor sign-in, password reset or email verification; sessions last 7 days without an idle timeout and cannot be
+- No two-factor sign-in, email-based password reset or email verification; sessions last 7 days without an idle timeout and cannot be
   revoked all at once.
 - CSRF relies on `SameSite=Lax` and the origin check rather than per-request tokens.
 - A per-account sign-in limit lets an attacker lock an account for up to 15 minutes.
 - Rate limits are per instance and in memory.
 - Audit entries are written after the action's own transaction (a failure to write is logged, not fatal), and the database
   owner can disable the audit triggers: protect database credentials and keep backups.
-- Users cannot be deactivated from the UI yet (planned).

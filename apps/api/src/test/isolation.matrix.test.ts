@@ -100,6 +100,7 @@ describe('tenant isolation matrix', () => {
         .role,
       movements: await prisma.stockMovement.count(),
       reviews: await prisma.reorderReview.count(),
+      managerUser: await prisma.user.findUniqueOrThrow({ where: { id: s.manager.userId } }),
     };
 
     const key = () => nextKey();
@@ -158,6 +159,8 @@ describe('tenant isolation matrix', () => {
       ['POST', `/forecasting/products/${s.product}/dismiss`, {}, 404],
       ['POST', `/forecasting/products/${s.product}/review`, {}, 404],
       ['PATCH', `/users/${s.manager.userId}/role`, { role: 'CASHIER' }, 404],
+      ['PATCH', `/users/${s.manager.userId}/status`, { isActive: false }, 404],
+      ['POST', `/users/${s.manager.userId}/reset-password`, undefined, 404],
     ];
 
     const problems: string[] = [];
@@ -185,6 +188,9 @@ describe('tenant isolation matrix', () => {
     ).toBe(before.role);
     expect(await prisma.stockMovement.count()).toBe(before.movements);
     expect(await prisma.reorderReview.count()).toBe(before.reviews);
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: s.manager.userId } })).toEqual(
+      before.managerUser,
+    );
   });
 
   it("lists show nothing of another store, and records cannot point at another store's ids", async () => {

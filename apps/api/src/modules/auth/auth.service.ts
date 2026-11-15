@@ -12,7 +12,7 @@ const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-timing', BCRYPT_COST);
 
 export interface AuthContext {
   sessionId: string;
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; mustChangePassword: boolean };
   memberships: { storeId: string; storeName: string; role: Role }[];
 }
 
@@ -83,7 +83,12 @@ export async function resolveSession(token: string): Promise<AuthContext | null>
   }
   return {
     sessionId: session.id,
-    user: { id: session.user.id, email: session.user.email, name: session.user.name },
+    user: {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      mustChangePassword: session.user.mustChangePassword,
+    },
     memberships: session.user.memberships.map((membership) => ({
       storeId: membership.storeId,
       storeName: membership.store.name,
@@ -98,11 +103,47 @@ export async function getAccount(userId: string) {
     include: { memberships: { include: { store: true } } },
   });
   return {
-    user: { id: user.id, email: user.email, name: user.name },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      mustChangePassword: user.mustChangePassword,
+    },
     memberships: user.memberships.map((membership) => ({
       storeId: membership.storeId,
       storeName: membership.store.name,
       role: membership.role,
     })),
   };
+}
+
+export async function changePassword(
+  userId: string,
+  sessionId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    throw new AppError(403, 'INVALID_CURRENT_PASSWORD', 'The current password is not correct');
+  }
+  if (newPassword === currentPassword) {
+    throw new AppError(
+      400,
+      'PASSWORD_UNCHANGED',
+      'Choose a password different from the current one',
+    );
+  }
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_COST);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    }),
+    prisma.session.deleteMany({ where: { userId, NOT: { id: sessionId } } }),
+  ]);
+}
+
+export async function updateProfile(userId: string, name: string): Promise<void> {
+  await prisma.user.update({ where: { id: userId }, data: { name } });
 }

@@ -333,6 +333,30 @@ const RULES: Rule[] = [
       ),
   },
   {
+    method: 'PATCH',
+    re: route(`/users/(${UUID})/status`),
+    build: (m, _r, res) =>
+      res.isActive === false
+        ? d(
+            'user.deactivate',
+            'User',
+            m[1],
+            `Deactivated "${clean(res.name)}": signed out and blocked from signing in`,
+          )
+        : d('user.reactivate', 'User', m[1], `Reactivated "${clean(res.name)}"`),
+  },
+  {
+    method: 'POST',
+    re: route(`/users/(${UUID})/reset-password`),
+    build: (m, _r, res) =>
+      d(
+        'user.password_reset',
+        'User',
+        m[1],
+        `Reset the password of "${clean(res.name)}"; they must choose a new one at their next sign-in`,
+      ),
+  },
+  {
     method: 'GET',
     re: route('/reports/export/([a-z-]+)'),
     build: (m, r) => {

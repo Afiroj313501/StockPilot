@@ -54,3 +54,21 @@ export function useActiveMembership() {
   const me = useMe();
   return me.data?.memberships[0];
 }
+
+export function useChangePassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api<void>('/auth/change-password', { method: 'POST', body }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ME_KEY }),
+  });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api<Account>('/auth/profile', { method: 'PATCH', body: { name } }),
+    onSuccess: (account) => qc.setQueryData(ME_KEY, account),
+  });
+}
